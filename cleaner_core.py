@@ -38,14 +38,15 @@ THEME_FILE = os.path.join(_app_dir(), "theme.json")
 # Правило простое: любое изменение в программе — новая строка версии.
 # Мелкая правка/починка → +0.1, крупная переделка → следующее целое число.
 # APP_BUILD — время и дата сборки, показывается в окне «о программе».
-APP_VERSION = "3.2"
-APP_BUILD = "14:50 01.11.2026"
+APP_VERSION = "3.3"
+APP_BUILD = "16:30 01.11.2026"
 APP_VERSION_FULL = f"версия {APP_VERSION} от {APP_BUILD}"
 
 # Короткий список того, что изменилось в этой версии (окно «о программе»).
 APP_CHANGES = (
-    "кнопка «Обновить» — новая версия скачивается с GitHub сама",
-    "во вкладке «Очистка» можно нарезать на своё число номеров («Своё число…»)",
+    "база расширена: +17 000 сёл, посёлков, ПГТ, станиц и хуторов (от 500 жителей)",
+    "у новых пунктов — телефонный код и диапазоны их района по свежему реестру Минцифры",
+    "в столбце специализации у новых пунктов показан тип: село, ПГТ, станица…",
 )
 
 # ─────────────────────────────  ОФОРМЛЕНИЕ: VORTEX  ─────────────────────────────
@@ -1501,6 +1502,8 @@ def search_by_specialization(query, cities):
         needles = [q]
     result = []
     for c in cities:
+        if c.get("ext"):
+            continue   # у сёл/посёлков из расширенной базы специализаций нет
         spec = INDUSTRY.get(c["n"], "")
         if not spec:
             continue
@@ -1574,11 +1577,52 @@ INDUSTRY.update(EXTRA_INDUSTRY)
 EXCLUDED_REGIONS = {"Дагестан"}
 
 
+# ───────────────  РАСШИРЕННАЯ БАЗА: сёла, посёлки, ПГТ  ───────────────
+# Лежит отдельным файлом settlements_ext.bin рядом с программой и
+# подгружается ПОВЕРХ основной базы (_CITY_B64/_PHONES_B64 не меняются).
+# Внутри (gzip + JSON):
+#   "s": [[название, lat, lon, население, регион, тип, код, [группы диапазонов]]]
+#   "g": группы диапазонов [[from, span, cap, op, kind], ...]
+#   "o": операторы для этих диапазонов
+# Источники: реестр нумерации Минцифры (через зеркало на GitHub) и набор
+# «Населённые пункты России» (ЦПУР). В реестре диапазоны выделены только
+# до уровня города / городского округа / муниципального района — поэтому у
+# сёл и посёлков диапазоны — это номера их района (kind=1, «район»), а свои
+# (kind=0, «город») — только там, где посёлок указан в реестре отдельно.
+SETTLEMENT_TYPES = {
+    "г": "город", "пгт": "ПГТ", "рп": "рабочий посёлок", "дп": "дачный посёлок",
+    "кп": "курортный посёлок", "гп": "городской посёлок", "с": "село", "п": "посёлок",
+    "д": "деревня", "х": "хутор", "ст-ца": "станица", "аул": "аул", "сл": "слобода",
+    "ст": "станция", "нп": "населённый пункт", "п/ст": "посёлок при станции",
+    "ж/д_ст": "ж/д станция", "у": "улус", "с/п": "сельское поселение",
+    "мкр": "микрорайон", "аал": "аал", "м": "местечко",
+}
+EXT_KEYS = set()      # ключи «название|регион» из расширенной базы
+# Сёла внутри городских округов крупных городов: их «район» — это номера
+# самого города, поэтому при определении города по номеру их не используем.
+EXT_IN_CITY = set()
+_EXT_CACHE = None
+
+
+def _load_ext_db():
+    global _EXT_CACHE
+    if _EXT_CACHE is None:
+        try:
+            with open(os.path.join(_app_dir(), "settlements_ext.bin"), "rb") as f:
+                _EXT_CACHE = json.loads(gzip.decompress(f.read()).decode("utf-8"))
+        except Exception:
+            _EXT_CACHE = {"s": [], "g": [], "o": []}
+    return _EXT_CACHE
+
+
 def load_city_db():
     raw = gzip.decompress(base64.b64decode(_CITY_B64)).decode("utf-8")
     arr = json.loads(raw)
     cities = [{"n": a[0], "lat": a[1], "lon": a[2], "pop": a[3], "sub": a[4]} for a in arr]
     cities.extend(EXTRA_SETTLEMENTS)  # рабочие посёлки — см. пояснение выше
+    for a in _load_ext_db().get("s", []):
+        cities.append({"n": a[0], "lat": a[1], "lon": a[2], "pop": a[3], "sub": a[4],
+                       "t": a[5], "ext": True})
     cities = [c for c in cities if c["sub"] not in EXCLUDED_REGIONS]
     index = {}
     for c in cities:
@@ -1589,7 +1633,24 @@ def load_phone_db():
     """-> (ops_list, codes{key}, ranges{key:[[from,span,cap,opidx,kind]]})"""
     raw = gzip.decompress(base64.b64decode(_PHONES_B64)).decode("utf-8")
     d = json.loads(raw)
-    return d["o"], d["c"], d["r"]
+    ops, codes, ranges = list(d["o"]), dict(d["c"]), dict(d["r"])
+    ext = _load_ext_db()
+    off = len(ops)
+    ops.extend(ext.get("o", []))
+    groups = [[[r[0], r[1], r[2], r[3] + off, r[4]] for r in g] for g in ext.get("g", [])]
+    for a in ext.get("s", []):
+        key = f"{a[0]}|{a[4]}"
+        if key in codes or key in ranges:
+            continue          # основная база всегда в приоритете
+        EXT_KEYS.add(key)
+        if len(a) > 8 and a[8]:
+            EXT_IN_CITY.add(key)
+        codes[key] = a[6]
+        rr = []
+        for gi in a[7]:
+            rr.extend(groups[gi])
+        ranges[key] = rr
+    return ops, codes, ranges
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0

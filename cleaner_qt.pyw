@@ -4250,7 +4250,7 @@ class App(QMainWindow):
             if c is center or km <= rad:
                 key = f"{c['n']}|{c['sub']}"
                 code = self.ph_codes.get(key, "")
-                spec = C.INDUSTRY.get(c["n"], "")
+                spec = C.SETTLEMENT_TYPES.get(c.get("t"), "") if c.get("ext") else C.INDUSTRY.get(c["n"], "")
                 rows.append((round(km), code, c["n"], c["sub"], c["pop"] or 0, spec, key))
         rows.sort(key=lambda r: r[0])
         self._last_rows = rows
@@ -4292,7 +4292,7 @@ class App(QMainWindow):
         for c in found:
             key = f"{c['n']}|{c['sub']}"
             code = self.ph_codes.get(key, "")
-            spec = C.INDUSTRY.get(c["n"], "")
+            spec = C.SETTLEMENT_TYPES.get(c.get("t"), "") if c.get("ext") else C.INDUSTRY.get(c["n"], "")
             rows.append((0, code, c["n"], c["sub"], c["pop"] or 0, spec, key))
         self._last_rows = rows
         self.sigCityFill.emit(rows)
@@ -4589,6 +4589,12 @@ class App(QMainWindow):
         sub_l = QLabel(f"{sub}   •   Код города: +7 {codetxt}   •   двойной клик по строке → callzone.info")
         sub_l.setStyleSheet(f"color:{FG2};")
         lay.addWidget(sub_l)
+        if key in C.EXT_KEYS and ranges and all(r[4] == 1 for r in ranges):
+            ext_l = QLabel("Это село/посёлок: в реестре Минцифры у него нет отдельных диапазонов — "
+                           "показаны номера всего его района.")
+            ext_l.setWordWrap(True)
+            ext_l.setStyleSheet(f"color:{FG2}; font-style:italic; font-size:9pt;")
+            lay.addWidget(ext_l)
 
         if not ranges:
             empty = QLabel("Для этого города в базе Россвязи нет городских диапазонов\n"
@@ -5161,8 +5167,8 @@ class App(QMainWindow):
             return self._rev_codes
         rev = {}
         for key, code in (self.ph_codes or {}).items():
-            if not code:
-                continue
+            if not code or key in C.EXT_KEYS:
+                continue   # сёла/посёлки из расширенной базы — см. _build_ext_rev_codes
             city = key.split("|")[0]
             rev.setdefault(str(code), []).append((city, key))
         # ВАЖНО: кешируем только непустой результат. Если self.ph_codes ещё
@@ -5175,7 +5181,44 @@ class App(QMainWindow):
             self._rev_codes = rev
         return rev
 
+    def _build_ext_rev_codes(self):
+        """То же, что _build_rev_codes, но только для расширенной базы
+        (сёла/посёлки). Внутри одного кода — от крупных пунктов к мелким."""
+        if getattr(self, "_ext_rev_codes", None):
+            return self._ext_rev_codes
+        pops = {f"{c['n']}|{c['sub']}": c.get("pop") or 0 for c in (self.cities or []) if c.get("ext")}
+        rev = {}
+        for key in sorted(C.EXT_KEYS - C.EXT_IN_CITY, key=lambda k: -pops.get(k, 0)):
+            code = (self.ph_codes or {}).get(key)
+            if code:
+                rev.setdefault(str(code), []).append((key.split("|")[0], key))
+        if rev:
+            self._ext_rev_codes = rev
+        return rev
+
     def _lookup_phone_city_operator(self, raw_phone):
+        """Сначала — прежняя логика по основной базе городов. Если она не
+        нашла точного попадания в диапазон, пробуем расширенную базу
+        (сёла/посёлки, номера их района); если и там нет — возвращаем то,
+        что дала основная база, как и раньше."""
+        city, op, exact = self._lookup_phone_city_operator_main(raw_phone)
+        if exact:
+            return city, op
+        digits = re.sub(r'\D', '', str(raw_phone))
+        if digits.startswith('7') or digits.startswith('8'):
+            digits = digits[1:]
+        if len(digits) >= 6 and digits.isdigit() and C.EXT_KEYS:
+            num = int(digits)
+            rev = self._build_ext_rev_codes()
+            for ln in (5, 4, 3):
+                for c2, key in rev.get(digits[:ln], ()):
+                    for frm, span, cap, opidx, kind in (self.ph_ranges or {}).get(key, []):
+                        if frm <= num <= frm + span:
+                            op2 = self.ph_ops[opidx] if 0 <= opidx < len(self.ph_ops) else ""
+                            return c2, op2
+        return city, op
+
+    def _lookup_phone_city_operator_main(self, raw_phone):
         """Определяет (город, оператор) для номера по нашей же базе диапазонов
         (та же, что использует вкладка «Города») — без обращения к сторонним
         сайтам. При совпадении кода сразу у нескольких городов сверяемся с
@@ -5193,11 +5236,11 @@ class App(QMainWindow):
         if digits.startswith('7') or digits.startswith('8'):
             digits = digits[1:]
         if len(digits) < 6:
-            return "", ""
+            return "", "", False
         try:
             num = int(digits)
         except ValueError:
-            return "", ""
+            return "", "", False
 
         rev = self._build_rev_codes()
         for ln in (5, 4, 3):
@@ -5210,18 +5253,18 @@ class App(QMainWindow):
                         frm, span, cap, opidx, kind = rng
                         if frm <= num <= frm + span:
                             op = self.ph_ops[opidx] if 0 <= opidx < len(self.ph_ops) else ""
-                            return city, op
+                            return city, op, True
                 # ни один диапазон не подошёл точно — берём первого кандидата
                 # как запасной вариант (город без гарантии оператора)
-                return candidates[0][0], ""
+                return candidates[0][0], "", False
             city, key = candidates[0]
             for rng in (self.ph_ranges or {}).get(key, []):
                 frm, span, cap, opidx, kind = rng
                 if frm <= num <= frm + span:
                     op = self.ph_ops[opidx] if 0 <= opidx < len(self.ph_ops) else ""
-                    return city, op
-            return city, ""
-        return "", ""
+                    return city, op, True
+            return city, "", False
+        return "", "", False
 
     def _detect_edit_city(self, pairs):
         try:
