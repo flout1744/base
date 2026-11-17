@@ -38,13 +38,14 @@ THEME_FILE = os.path.join(_app_dir(), "theme.json")
 # Правило простое: любое изменение в программе — новая строка версии.
 # Мелкая правка/починка → +0.1, крупная переделка → следующее целое число.
 # APP_BUILD — время и дата сборки, показывается в окне «о программе».
-APP_VERSION = "3.5"
-APP_BUILD = "11:25 17.11.2026"
+APP_VERSION = "3.6"
+APP_BUILD = "12:30 17.11.2026"
 APP_VERSION_FULL = f"версия {APP_VERSION} от {APP_BUILD}"
 
 # Короткий список того, что изменилось в этой версии (окно «о программе»).
 APP_CHANGES = (
-    "две новые темы оформления — «Пульт» (тёмная) и «Бланк» (светлая): свой дизайн, кнопки-клавиши, лампа у активного раздела, поля-строки бланка, свои анимации; выбираются в шапке окна",
+    "две новые темы — «Оникс» (тёмная) и «Кварц» (светлая) с полностью своим дизайном: узкая полоса иконок вместо бокового меню, новая шапка, все вкладки разложены по карточкам по-новому, новые иконки и анимации",
+    "темы «Пульт» и «Бланк» убраны — если была выбрана одна из них, включится «Оникс» или «Кварц»",
     "прежние темы остались без изменений",
 )
 
@@ -236,90 +237,81 @@ THEMES = {
     },
 }
 
-# ─────────────────────  СЕМЕЙСТВО «ПУЛЬТ / БЛАНК»  ─────────────────────
-# Отдельный дизайн (design = "console"), а не перекраска Vortex: свой QSS,
-# свои эффекты, свой шрифт и свои пропорции. Темы Vortex этот блок не задевает —
+# ─────────────────────  СЕМЕЙСТВО «ОНИКС / КВАРЦ»  ─────────────────────
+# Отдельный дизайн (design = "studio"), а не перекраска Vortex: свой каркас
+# окна (узкая полоса иконок слева вместо бокового меню, шапка с кнопками окна),
+# своя раскладка каждой вкладки (карточки-секции, колонки), свои иконки
+# (Phosphor), свой QSS и свои эффекты. Темы Vortex этот блок не задевает —
 # всё новое включается только когда активна одна из этих двух тем.
-#   «Пульт» — диспетчерский пульт: графит с оливковым отливом, сигнальная
-#             жёлтая лампа, кнопки-клавиши, никаких градиентов и свечений.
-#   «Бланк» — служебный бланк: белая бумага, тёмный фиолетово-чернильный
-#             корешок меню, акцент — цвет чернил штампа.
-THEMES["console_dark"] = {
-    "label": "Пульт",
-    "design": "console",
-    "swatch": "#f0c24b",
-    "icon": "mdi6.toggle-switch-outline|mdi.toggle-switch-outline|fa5s.toggle-on",
+THEMES["studio_dark"] = {
+    "label": "Оникс",
+    "design": "studio",
+    "swatch": "#7c7ff7",
+    "icon": "ph.moon|mdi6.weather-night",
 
-    "BG":      "#1c1e1b",   # холст окна
-    "BG2":     "#141613",   # заголовок окна, статус-строка
-    "BG3":     "#222520",   # карточка контента
-    "NAV_BG":  "#171916",   # боковое меню
+    "BG":      "#141518",   # холст окна
+    "BG2":     "#101114",   # полоса иконок
+    "BG3":     "#1b1c20",   # карточки-секции
+    "NAV_BG":  "#101114",
 
-    "SURFACE": "#2a2d27",   # поля ввода, таблицы
-    "BORDER":  "#3a3e36",
-    "DIVIDER": "#2f332c",
+    "SURFACE": "#212227",   # поля ввода, таблицы
+    "BORDER":  "#2b2c32",
+    "DIVIDER": "#25262b",
 
-    "ACCENT":      "#f0c24b",   # сигнальная лампа
-    "ACCENT_HV":   "#ffd76e",
-    "ACCENT_DEEP": "#9c7a1e",   # «тень» клавиши под акцентной кнопкой
-    "ACCENT_SOFT": "#ffe7a6",
+    "ACCENT":      "#7c7ff7",
+    "ACCENT_HV":   "#9598ff",
+    "ACCENT_DEEP": "#5a5de0",
+    "ACCENT_SOFT": "#b9bbff",
 
-    "DUPE_RED": "#ec6a4f", "DUPE_RED_HV": "#ff8c73",
-    "DANGER_BG": "#33201b", "DANGER_FG": "#ffbcab",
-    "GREEN": "#8bc77a", "GREEN_HV": "#a9db9a",
-    "BLUE": "#8fb3d9",
+    "DUPE_RED": "#f26d6d", "DUPE_RED_HV": "#ff8f8f",
+    "DANGER_BG": "#2c1a1c", "DANGER_FG": "#ffb3b3",
+    "GREEN": "#4cc38a", "GREEN_HV": "#6fd7a4",
+    "BLUE": "#6aa7ff",
 
-    "GRAY_BTN": "#2c2f29", "GRAY_HV": "#353931",
+    "GRAY_BTN": "#24252b", "GRAY_HV": "#2c2d34",
 
-    "FG": "#eceae1", "FG2": "#a6a89c", "FG3": "#74776c",
-    "LOG_FG": "#c9c8bc",
+    "FG": "#ececf0", "FG2": "#9a9ba5", "FG3": "#6b6c76",
+    "LOG_FG": "#c4c5cd",
 
-    "HOVER_ROW": "#2f322b", "ROW_ODD": "#252822",
-
-    # ── только для дизайна «console» ──
-    "NAV_FG": "#a6a89c", "NAV_FG_HI": "#eceae1",
-    "NAV_ACTIVE_BG": "#f0c24b", "NAV_ACTIVE_FG": "#1c1a10",
-    "KEY_EDGE": "#0e0f0d",      # нижняя кромка обычных клавиш
+    "HOVER_ROW": "#25262c", "ROW_ODD": "#1e1f24",
+    "ON_ACCENT": "#ffffff",
 }
-THEMES["console_light"] = {
-    "label": "Бланк",
-    "design": "console",
-    "swatch": "#5b3fc4",
-    "icon": "mdi6.file-document-outline|mdi.file-document-outline|fa5s.file-alt",
+THEMES["studio_light"] = {
+    "label": "Кварц",
+    "design": "studio",
+    "swatch": "#5856d6",
+    "icon": "ph.sun|mdi6.white-balance-sunny",
 
-    "BG":      "#eceef2",   # стол, на котором лежит бланк
-    "BG2":     "#e1e4ea",
-    "BG3":     "#ffffff",   # сам бланк
-    "NAV_BG":  "#25213f",   # чернильный корешок меню
+    "BG":      "#f5f5f7",   # холст окна
+    "BG2":     "#ffffff",   # полоса иконок
+    "BG3":     "#ffffff",   # карточки-секции
+    "NAV_BG":  "#ffffff",
 
     "SURFACE": "#ffffff",
-    "BORDER":  "#c8ccd6",
-    "DIVIDER": "#e3e6ec",
+    "BORDER":  "#e3e3e8",
+    "DIVIDER": "#ececf0",
 
-    "ACCENT":      "#5b3fc4",   # фиолетовые чернила штампа
-    "ACCENT_HV":   "#7357e0",
-    "ACCENT_DEEP": "#3b2790",
-    "ACCENT_SOFT": "#3f2a99",   # акцентный текст на белом
+    "ACCENT":      "#5856d6",
+    "ACCENT_HV":   "#6b69e6",
+    "ACCENT_DEEP": "#4644b8",
+    "ACCENT_SOFT": "#4644b8",   # акцентный текст на белом
 
-    "DUPE_RED": "#cf3a24", "DUPE_RED_HV": "#a92b18",
-    "DANGER_BG": "#fde7e3", "DANGER_FG": "#8f2414",
-    "GREEN": "#1f8a4c", "GREEN_HV": "#18713e",
-    "BLUE": "#2f63c4",
+    "DUPE_RED": "#e5484d", "DUPE_RED_HV": "#cd2b31",
+    "DANGER_BG": "#fdecec", "DANGER_FG": "#b42318",
+    "GREEN": "#1f9d61", "GREEN_HV": "#178a54",
+    "BLUE": "#2f6fe4",
 
-    "GRAY_BTN": "#ffffff", "GRAY_HV": "#f3f4f7",
+    "GRAY_BTN": "#ffffff", "GRAY_HV": "#f4f4f7",
 
-    "FG": "#1b1d24", "FG2": "#555b69", "FG3": "#7a8090",
-    "LOG_FG": "#3d4250",
+    "FG": "#1c1c21", "FG2": "#6a6b76", "FG3": "#9a9ba5",
+    "LOG_FG": "#3f4049",
 
-    "HOVER_ROW": "#f1eefc", "ROW_ODD": "#f7f8fa",
-
-    "NAV_FG": "#b7b2d6", "NAV_FG_HI": "#ffffff",
-    "NAV_ACTIVE_BG": "#ffffff", "NAV_ACTIVE_FG": "#25213f",
-    "KEY_EDGE": "#b9bdc8",
+    "HOVER_ROW": "#f6f6fa", "ROW_ODD": "#fafafc",
+    "ON_ACCENT": "#ffffff",
 }
 
 THEME_ORDER = ["vortex_dark", "vortex_light", "vortex_graphite",
-               "vortex_cherry", "vortex_ocean", "console_dark", "console_light"]
+               "vortex_cherry", "vortex_ocean", "studio_dark", "studio_light"]
 
 # Единый набор иконок. Значение — список кандидатов через «|»: берётся первый,
 # который есть в установленной версии qtawesome. Так набор mdi6 (скруглённые,
@@ -369,7 +361,7 @@ ICON_SETS = {
 def get_icon_set(theme_name=None):
     """Набор иконок (роль -> имя/список имён qtawesome)."""
     base = dict(ICON_SETS["vortex_dark"])
-    base.update(ICON_SETS.get(theme_name or "vortex_dark", {}))
+    base.update(ICON_SETS.get(theme_name or _active_theme_name, {}))
     return base
 
 
@@ -396,18 +388,42 @@ STYLE_SETS = {
 }
 
 
-# Пропорции семейства «Пульт / Бланк»: меньше скругления, системный
-# Bahnschrift (есть в Windows 10/11, в т.ч. кириллица), чуть уже меню.
-_CONSOLE_STYLE = {
-    "design": "console",
-    "font": "Bahnschrift", "font_fallback": "Segoe UI", "font_mono": "Cascadia Mono",
-    "radius_sm": 4, "radius_md": 6, "radius_lg": 10,
-    "icon_btn_radius": 6, "border_w": 1, "btn_weight": 600,
-    "nav_style": "console", "gradient_buttons": False,
-    "sidebar_w": 240,
+# Пропорции семейства «Оникс / Кварц»: узкая полоса иконок вместо меню,
+# системный Segoe UI Variable (Windows 11; на Windows 10 — Segoe UI).
+_STUDIO_STYLE = {
+    "design": "studio",
+    "font": "Segoe UI Variable Text", "font_fallback": "Segoe UI", "font_mono": "Cascadia Mono",
+    "radius_sm": 6, "radius_md": 8, "radius_lg": 12,
+    "icon_btn_radius": 8, "border_w": 1, "btn_weight": 600,
+    "nav_style": "rail", "gradient_buttons": False,
+    "sidebar_w": 68,
+    "resizable": True,
+    "win_w": 1360, "win_h": 840,
+    "win_min_w": 1180, "win_min_h": 680,
 }
-STYLE_SETS["console_dark"] = dict(_CONSOLE_STYLE)
-STYLE_SETS["console_light"] = dict(_CONSOLE_STYLE)
+STYLE_SETS["studio_dark"] = dict(_STUDIO_STYLE)
+STYLE_SETS["studio_light"] = dict(_STUDIO_STYLE)
+
+# Иконки «Оникса / Кварца» — набор Phosphor (тонкие ровные контуры), с
+# запасом на mdi, если в установленной qtawesome нет Phosphor.
+_PH = {
+    "folder": "ph.folder-open", "broom": "ph.sparkle", "map": "ph.map-trifold",
+    "edit": "ph.pencil-simple", "bolt": "ph.lightning", "warning": "ph.warning",
+    "list": "ph.list-bullets", "filter": "ph.funnel-simple", "eraser": "ph.eraser",
+    "copy": "ph.copy", "trash": "ph.trash-simple", "shuffle": "ph.shuffle",
+    "excel": "ph.table", "layers": "ph.stack", "phone": "ph.phone-call",
+    "database": "ph.database", "check": "ph.check-circle", "save": "ph.floppy-disk",
+    "piggy": "ph.wallet", "hashtag": "ph.hash", "map_pin": "ph.map-pin",
+    "status": "ph.checks", "win_min": "ph.minus", "win_max": "ph.square",
+    "win_rest": "ph.copy-simple", "win_close": "ph.x", "info": "ph.info",
+    "search": "ph.magnifying-glass", "palette": "ph.palette", "theme_light": "ph.sun",
+    "theme_dark": "ph.moon", "fullscreen": "ph.corners-out", "fullscreen_exit": "ph.corners-in",
+    "update": "ph.arrows-clockwise", "history": "ph.clock-counter-clockwise",
+    "files": "ph.files", "play": "ph.play", "export": "ph.export",
+}
+_STUDIO_ICONS = {k: v + "|" + ICON_SETS["vortex_dark"].get(k, "mdi6.circle-outline") for k, v in _PH.items()}
+ICON_SETS["studio_dark"] = dict(_STUDIO_ICONS)
+ICON_SETS["studio_light"] = dict(_STUDIO_ICONS)
 
 
 def get_style_set(theme_name=None):
@@ -425,6 +441,7 @@ def load_saved_theme():
     try:
         with open(THEME_FILE, "r", encoding="utf-8") as f:
             name = json.load(f).get("theme", DEFAULT_THEME)
+            name = {"console_dark": "studio_dark", "console_light": "studio_light"}.get(name, name)
             return name if name in THEMES else DEFAULT_THEME
     except Exception:
         return DEFAULT_THEME

@@ -84,16 +84,11 @@ ROW_ODD, HOVER_ROW = C.ROW_ODD, C.HOVER_ROW
 ICONS = C.get_icon_set()   # роль -> имя(имена) иконки qtawesome
 STYLE = C.get_style_set()  # шрифт, скругления, рамки, размеры хрома окна
 
-# ── семейство «Пульт / Бланк» (design = "console") ──
-# Всё, что ниже помечено CONSOLE, работает только в этих двух темах. Для тем
-# Vortex флаг ложный, и они идут ровно по прежним веткам кода.
+# ── семейство «Оникс / Кварц» (design = "studio") ──
+# Всё, что помечено STUDIO, работает только в этих двух темах. Для тем Vortex
+# флаг ложный, и они идут ровно по прежним веткам кода.
 _THEME = C.THEMES.get(getattr(C, "_active_theme_name", C.DEFAULT_THEME), {})
-CONSOLE = STYLE.get("design") == "console"
-NAV_FG = _THEME.get("NAV_FG", C.FG2)
-NAV_FG_HI = _THEME.get("NAV_FG_HI", C.FG)
-NAV_ACTIVE_BG = _THEME.get("NAV_ACTIVE_BG", C.ACCENT)
-NAV_ACTIVE_FG = _THEME.get("NAV_ACTIVE_FG", C.BG)
-KEY_EDGE = _THEME.get("KEY_EDGE", "#000000")
+STUDIO = STYLE.get("design") == "studio"
 THEME_LABEL = _THEME.get("label", "Vortex")
 
 
@@ -245,7 +240,7 @@ def _preview_panel_qss(bg=None):
     """
     return (f"QFrame#preview_panel {{ background-color:{bg or PANEL_BG};"
             f" border:1px solid {PANEL_BORDER};"
-            f" border-radius:{STYLE['radius_md'] if CONSOLE else 14}px; }}")
+            f" border-radius:{STYLE['radius_md'] if STUDIO else 14}px; }}")
 
 
 def _card_bg():
@@ -305,9 +300,9 @@ ON_ACCENT = _best_text_color(_mix(ACCENT, ACCENT_DEEP, 0.18),
 # ту самую многослойность, из-за которой интерфейс читается как «дорогой».
 PANEL_BG = "rgba(255,255,255,0.045)"
 PANEL_BORDER = "rgba(255,255,255,0.07)"
-if CONSOLE:
-    # вложенная панель на бланке — чуть темнее листа, с обычной линией
-    PANEL_BG = _mix(BG3, BG, 0.55)
+if STUDIO:
+    ON_ACCENT = _THEME.get("ON_ACCENT", ON_ACCENT)
+    PANEL_BG = _mix(SURFACE, BG, 0.5)
     PANEL_BORDER = BORDER
 FONT_STACK = f"'{STYLE['font']}', '{STYLE.get('font_fallback', 'Segoe UI')}'"
 
@@ -357,8 +352,8 @@ def C_clean_transcript(text):
 #   крупные скругления, много воздуха, заглавные разрядки в микро-подписях.
 # ══════════════════════════════════════════════════════════════════════════════
 def build_qss():
-    if CONSOLE:
-        return _build_qss_console()
+    if STUDIO:
+        return _build_qss_studio()
     R_SM, R_MD, R_LG = STYLE["radius_sm"], STYLE["radius_md"], STYLE["radius_lg"]
     ICR = STYLE["icon_btn_radius"]
     BW = STYLE["border_w"]
@@ -769,24 +764,16 @@ def build_qss():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#                     ОФОРМЛЕНИЕ  ·  «ПУЛЬТ» / «БЛАНК»
-#   Плоские плашки без градиентов и свечений. Кнопки — клавиши с нижней
-#   кромкой, которые «проминаются» при нажатии. Поля ввода — строки бланка
-#   с подчёркиванием. Активный раздел меню — горящая клавиша.
+#                     ОФОРМЛЕНИЕ  ·  «ОНИКС» / «КВАРЦ»
+#   Чистый современный стиль: плоские карточки-секции с тонкой линией,
+#   много воздуха, спокойные цвета, один индиго-акцент. Без градиентов,
+#   свечений и бегущих волн. Действует только в этих двух темах.
 # ══════════════════════════════════════════════════════════════════════════════
 _CHECK_ICON_PATH = None
 
 
-def _console_card_qss(name):
-    """Всплывающая карточка (палитра, выбор темы, «о программе») в «Пульте/Бланке»:
-    плоский лист с линией и толстой акцентной кромкой сверху."""
-    return (f"QFrame#{name} {{ background-color:{BG3}; border:1px solid {_mix(BORDER, FG, 0.25)};"
-            f" border-top:4px solid {ACCENT}; border-radius:{STYLE['radius_lg']}px; }}")
-
-
-def _console_check_icon():
-    """Галочка для отмеченного чекбокса. QSS умеет картинки только из файла,
-    поэтому один раз рисуем её во временную папку."""
+def _studio_check_icon():
+    """Галочка для отмеченного чекбокса (QSS берёт картинки только из файла)."""
     global _CHECK_ICON_PATH
     if _CHECK_ICON_PATH and os.path.exists(_CHECK_ICON_PATH):
         return _CHECK_ICON_PATH
@@ -797,394 +784,269 @@ def _console_check_icon():
         p = QPainter(pm)
         p.setRenderHint(QPainter.Antialiasing)
         pen = QPen(QColor(ON_ACCENT))
-        pen.setWidthF(4.2)
+        pen.setWidthF(3.6)
         pen.setCapStyle(Qt.RoundCap)
         pen.setJoinStyle(Qt.RoundJoin)
         p.setPen(pen)
         path = QPainterPath()
-        path.moveTo(7.5, 16.5)
-        path.lineTo(13.5, 22.5)
-        path.lineTo(24.5, 9.5)
+        path.moveTo(8.5, 16.5)
+        path.lineTo(13.5, 21.5)
+        path.lineTo(23.5, 10.5)
         p.drawPath(path)
         p.end()
         folder = os.path.join(tempfile.gettempdir(), "base_ui")
         os.makedirs(folder, exist_ok=True)
-        name = "check_" + ON_ACCENT.lstrip("#") + ".png"
-        path_out = os.path.join(folder, name)
-        if pm.save(path_out, "PNG"):
-            _CHECK_ICON_PATH = path_out
+        out = os.path.join(folder, "check_" + ON_ACCENT.lstrip("#") + ".png")
+        if pm.save(out, "PNG"):
+            _CHECK_ICON_PATH = out
     except Exception:
         _CHECK_ICON_PATH = None
     return _CHECK_ICON_PATH
 
 
-def _build_qss_console():
-    R_SM, R_MD, R_LG = STYLE["radius_sm"], STYLE["radius_md"], STYLE["radius_lg"]
-    ICR = STYLE["icon_btn_radius"]
-    BTNW = STYLE["btn_weight"]
+def _studio_popup_qss(name):
+    """Всплывающая карточка (палитра, выбор темы, «о программе»)."""
+    return (f"QFrame#{name} {{ background-color:{BG3}; border:1px solid {BORDER};"
+            f" border-radius:14px; }}")
 
-    # нижняя кромка клавиш
-    EDGE = KEY_EDGE
-    ACC_EDGE = ACCENT_DEEP
-    GRN_EDGE = _mix(GREEN, "#000000", 0.38)
-    LINE = BORDER                                  # линия бланка
-    LINE_HI = _mix(BORDER, FG, 0.25)
-    HEAD_RULE = ACCENT if not IS_LIGHT else FG     # линия под шапкой таблицы
-    TIP_BG, TIP_FG = FG, BG3                       # тултип в инверсии
-    NAV_LINE = _rgba("#ffffff", 0.08)
-    chk = _console_check_icon()
+
+def _build_qss_studio():
+    R_SM, R_MD, R_LG = STYLE["radius_sm"], STYLE["radius_md"], STYLE["radius_lg"]
+    BTNW = STYLE["btn_weight"]
+    LINE = BORDER
+    LINE_HI = _mix(BORDER, FG, 0.18)
+    ACC_SOFT_BG = _rgba(ACCENT, 0.12 if not IS_LIGHT else 0.09)
+    TIP_BG = "#1c1c21" if IS_LIGHT else "#2e2f36"
+    chk = _studio_check_icon()
     chk_img = f"image: url({chk.replace(os.sep, '/')});" if chk else ""
 
     return f"""
-    /* ─────────────────────────  БАЗА  ───────────────────────── */
     QWidget {{
         background-color: transparent;
         color: {FG};
         font-family: {FONT_STACK};
-        font-size: 10.5pt;
+        font-size: 10pt;
     }}
     QMainWindow, QDialog {{ background-color: {BG}; }}
-    QWidget#root_bg {{
-        background-color: {BG2};
-        border: 1px solid {LINE};
-    }}
+    QWidget#root_bg {{ background-color: {BG}; border: 1px solid {LINE}; }}
     QLabel {{ background: transparent; }}
-    QLabel#h1 {{ font-size: 17pt; font-weight: 700; color: {FG}; }}
-    QLabel#h2 {{ font-size: 11.5pt; font-weight: 600; color: {FG}; }}
+    QLabel#h1 {{ font-size: 17pt; font-weight: 600; color: {FG}; }}
+    QLabel#h2 {{ font-size: 11pt; font-weight: 600; color: {FG}; }}
     QLabel#muted {{ color: {FG2}; font-size: 9.5pt; }}
-    QLabel#eyebrow {{ color: {FG3}; font-size: 9pt; font-weight: 600; letter-spacing: 0.4px; }}
+    QLabel#eyebrow {{ color: {FG3}; font-size: 9pt; font-weight: 600; }}
     QLabel#chip {{
-        color: {FG2};
-        background-color: transparent;
-        border: 1px solid {LINE_HI};
-        border-radius: {R_SM}px; padding: 3px 9px;
-        font-size: 9.5pt; font-weight: 600;
+        color: {ACCENT_SOFT}; background-color: {ACC_SOFT_BG};
+        border: none; border-radius: 10px; padding: 3px 10px;
+        font-size: 9pt; font-weight: 600;
     }}
     QToolTip {{
-        background-color: {TIP_BG}; color: {TIP_FG};
+        background-color: {TIP_BG}; color: #f4f4f6;
         border: none; border-radius: {R_SM}px; padding: 6px 9px;
     }}
 
-    /* ─────────────  ПОЛЯ ВВОДА: строка бланка с подчёркиванием  ───────────── */
+    /* ── карточки-секции ── */
+    QFrame#s_card {{ background-color: {BG3}; border: 1px solid {LINE}; border-radius: {R_LG + 2}px; }}
+    QLabel#s_title {{ font-size: 11pt; font-weight: 600; color: {FG}; }}
+    QLabel#s_hint {{ font-size: 9pt; color: {FG2}; }}
+    QLabel#s_caption {{ font-size: 9pt; font-weight: 600; color: {FG2}; }}
+    QLabel#s_step {{
+        min-width: 22px; max-width: 22px; min-height: 22px; max-height: 22px;
+        border-radius: 11px; background-color: {ACC_SOFT_BG}; color: {ACCENT_SOFT};
+        font-size: 9pt; font-weight: 700; qproperty-alignment: AlignCenter;
+    }}
+    QFrame#s_vline {{ background-color: {LINE}; border: none; }}
+    QFrame#s_hline {{ background-color: {LINE}; border: none; }}
+
+    /* ── поля ввода ── */
     QLineEdit, QTextEdit, QPlainTextEdit {{
         background-color: {SURFACE};
         border: 1px solid {LINE};
-        border-bottom: 2px solid {LINE_HI};
-        border-radius: {R_SM}px;
-        padding: 8px 11px 7px 11px;
+        border-radius: {R_MD}px;
+        padding: 7px 11px;
         color: {FG};
-        selection-background-color: {ACCENT};
-        selection-color: {ON_ACCENT};
+        selection-background-color: {_rgba(ACCENT, 0.35)};
+        selection-color: {FG};
     }}
-    QLineEdit:hover, QTextEdit:hover, QPlainTextEdit:hover {{ border-bottom: 2px solid {FG3}; }}
-    QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {{
-        border: 1px solid {LINE_HI};
-        border-bottom: 2px solid {ACCENT};
-    }}
-    QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled {{
-        color: {FG3}; border-bottom: 2px solid {LINE};
-    }}
+    QLineEdit:hover, QTextEdit:hover, QPlainTextEdit:hover {{ border: 1px solid {LINE_HI}; }}
+    QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {{ border: 1px solid {ACCENT}; }}
+    QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled {{ color: {FG3}; background-color: {BG}; }}
+    QLineEdit[readOnly="true"] {{ background-color: {_mix(SURFACE, BG, 0.6)}; }}
 
-    /* ─────────────────────  КНОПКИ-КЛАВИШИ  ───────────────────── */
+    /* ── кнопки ── */
     QPushButton {{
         background-color: {GRAY_BTN};
         color: {FG};
         border: 1px solid {LINE};
-        border-bottom: 3px solid {EDGE};
         border-radius: {R_MD}px;
-        padding: 7px 15px 6px 15px;
+        padding: 7px 14px;
         font-weight: {BTNW};
     }}
-    QPushButton:hover {{ background-color: {GRAY_HV}; border-color: {LINE_HI}; border-bottom: 3px solid {EDGE}; }}
-    QPushButton:pressed {{
-        background-color: {GRAY_HV};
-        border-bottom: 1px solid {EDGE};
-        padding: 9px 15px 6px 15px;          /* клавиша проминается на 2px */
-    }}
-    QPushButton:disabled {{ color: {FG3}; background-color: {_mix(GRAY_BTN, BG3, 0.5)}; border-bottom: 3px solid {LINE}; }}
+    QPushButton:hover {{ background-color: {GRAY_HV}; border: 1px solid {LINE_HI}; }}
+    QPushButton:pressed {{ background-color: {_mix(GRAY_HV, FG, 0.06)}; }}
+    QPushButton:disabled {{ color: {FG3}; background-color: {_mix(GRAY_BTN, BG, 0.5)}; border: 1px solid {LINE}; }}
 
     QPushButton#accent {{
-        background-color: {ACCENT};
-        color: {ON_ACCENT};
-        border: 1px solid {ACC_EDGE};
-        border-bottom: 3px solid {ACC_EDGE};
-        border-radius: {R_MD}px;
-        font-weight: 700;
-        padding: 8px 18px 7px 18px;
+        background-color: {ACCENT}; color: {ON_ACCENT};
+        border: 1px solid {ACCENT}; border-radius: {R_MD}px;
+        padding: 8px 16px; font-weight: 600;
     }}
-    QPushButton#accent:hover {{ background-color: {ACCENT_HV}; }}
-    QPushButton#accent:pressed {{ border-bottom: 1px solid {ACC_EDGE}; padding: 10px 18px 7px 18px; }}
-    QPushButton#accent:disabled {{
-        background-color: {_mix(ACCENT, BG3, 0.6)}; color: {_mix(ON_ACCENT, BG3, 0.4)};
-        border-color: {_mix(ACC_EDGE, BG3, 0.6)};
-    }}
+    QPushButton#accent:hover {{ background-color: {ACCENT_HV}; border: 1px solid {ACCENT_HV}; }}
+    QPushButton#accent:pressed {{ background-color: {ACCENT_DEEP}; border: 1px solid {ACCENT_DEEP}; }}
+    QPushButton#accent:disabled {{ background-color: {_mix(ACCENT, BG, 0.6)}; border: 1px solid {_mix(ACCENT, BG, 0.6)}; color: {_mix(ON_ACCENT, BG, 0.3)}; }}
 
     QPushButton#green {{
-        background-color: {GREEN};
-        color: {_best_text_color(GREEN, dark="#0f2414", light="#f3fff6")};
-        border: 1px solid {GRN_EDGE};
-        border-bottom: 3px solid {GRN_EDGE};
-        border-radius: {R_MD}px;
-        font-weight: 700;
-        padding: 8px 18px 7px 18px;
+        background-color: {GREEN}; color: #ffffff;
+        border: 1px solid {GREEN}; border-radius: {R_MD}px;
+        padding: 8px 16px; font-weight: 600;
     }}
-    QPushButton#green:hover {{ background-color: {GREEN_HV}; }}
-    QPushButton#green:pressed {{ border-bottom: 1px solid {GRN_EDGE}; padding: 10px 18px 7px 18px; }}
+    QPushButton#green:hover {{ background-color: {GREEN_HV}; border: 1px solid {GREEN_HV}; }}
+    QPushButton#green:pressed {{ background-color: {_mix(GREEN, "#000000", 0.15)}; }}
 
     QPushButton#danger {{
-        background-color: transparent;
-        color: {DUPE_RED};
-        border: 1px solid {_rgba(DUPE_RED, 0.55)};
-        border-bottom: 3px solid {_rgba(DUPE_RED, 0.55)};
-        border-radius: {R_MD}px;
+        background-color: transparent; color: {DUPE_RED};
+        border: 1px solid {_rgba(DUPE_RED, 0.35)}; border-radius: {R_MD}px;
     }}
-    QPushButton#danger:hover {{ background-color: {_rgba(DUPE_RED, 0.10)}; color: {DUPE_RED_HV}; }}
-    QPushButton#danger:pressed {{ border-bottom: 1px solid {_rgba(DUPE_RED, 0.55)}; padding: 9px 15px 6px 15px; }}
+    QPushButton#danger:hover {{ background-color: {DANGER_BG}; border: 1px solid {_rgba(DUPE_RED, 0.55)}; }}
 
-    /* Сегменты — ряд клавиш, нажатая «горит» */
+    QPushButton#ghost {{ background-color: transparent; border: 1px solid transparent; color: {FG2}; }}
+    QPushButton#ghost:hover {{ background-color: {GRAY_HV}; color: {FG}; border: 1px solid transparent; }}
+
     QPushButton#seg {{
-        background-color: {GRAY_BTN};
-        color: {FG2};
-        border: 1px solid {LINE};
-        border-bottom: 3px solid {EDGE};
-        border-radius: {R_SM}px;
-        padding: 6px 13px 5px 13px;
-        font-weight: {BTNW};
+        background-color: transparent; color: {FG2};
+        border: 1px solid transparent; border-radius: {R_SM}px;
+        padding: 5px 12px; font-weight: 600;
     }}
     QPushButton#seg:hover {{ color: {FG}; background-color: {GRAY_HV}; }}
-    QPushButton#seg:checked {{
-        background-color: {ACCENT};
-        color: {ON_ACCENT};
-        border: 1px solid {ACC_EDGE};
-        border-bottom: 1px solid {ACC_EDGE};
-        padding: 8px 13px 5px 13px;          /* зафиксирована в нажатом положении */
-        font-weight: 700;
-    }}
+    QPushButton#seg:checked {{ background-color: {BG3}; color: {FG}; border: 1px solid {LINE}; }}
 
     QToolButton#dropdown_btn {{
-        background-color: {GRAY_BTN};
-        color: {FG};
-        border: 1px solid {LINE};
-        border-bottom: 3px solid {EDGE};
-        border-radius: {R_MD}px;
-        padding: 6px 13px 5px 13px;
-        font-weight: {BTNW};
+        background-color: {GRAY_BTN}; color: {FG};
+        border: 1px solid {LINE}; border-radius: {R_MD}px;
+        padding: 6px 12px; font-weight: {BTNW};
     }}
     QToolButton#dropdown_btn::menu-indicator {{ image: none; width: 0; }}
-    QToolButton#dropdown_btn:hover {{ background-color: {GRAY_HV}; border-color: {LINE_HI}; border-bottom: 3px solid {EDGE}; }}
-    QToolButton#dropdown_btn:pressed {{ border-bottom: 1px solid {EDGE}; padding: 8px 13px 5px 13px; }}
+    QToolButton#dropdown_btn:hover {{ background-color: {GRAY_HV}; border: 1px solid {LINE_HI}; }}
 
-    /* Вкладки внутри страниц — закладки с подчёркиванием */
     QPushButton#tab {{
-        background: transparent;
-        color: {FG2};
-        border: none;
-        border-bottom: 2px solid {LINE};
-        border-radius: 0px;
-        padding: 7px 16px;
-        font-weight: {BTNW};
+        background: transparent; color: {FG2}; border: none;
+        border-bottom: 2px solid transparent; border-radius: 0px; padding: 7px 14px;
     }}
-    QPushButton#tab:hover {{ color: {FG}; border-bottom: 2px solid {FG3}; }}
-    QPushButton#tab:checked {{ color: {FG}; border-bottom: 2px solid {ACCENT}; font-weight: 700; }}
+    QPushButton#tab:hover {{ color: {FG}; }}
+    QPushButton#tab:checked {{ color: {FG}; border-bottom: 2px solid {ACCENT}; }}
 
-    /* Квадратные клавиши-иконки */
     QPushButton#icon_btn, QPushButton#icon_btn_danger, QPushButton#icon_btn_green {{
         background-color: {GRAY_BTN};
         border: 1px solid {LINE};
-        border-bottom: 3px solid {EDGE};
-        border-radius: {ICR}px;
-        font-size: 13pt;
-        padding: 0px;
-        color: {FG};
+        border-radius: {R_MD}px;
+        font-size: 13pt; padding: 0px; color: {FG};
     }}
     QPushButton#icon_btn:hover, QPushButton#icon_btn_danger:hover, QPushButton#icon_btn_green:hover {{
-        background-color: {GRAY_HV}; border-color: {LINE_HI}; border-bottom: 3px solid {EDGE};
+        background-color: {GRAY_HV}; border: 1px solid {LINE_HI};
     }}
     QPushButton#icon_btn:pressed, QPushButton#icon_btn_danger:pressed, QPushButton#icon_btn_green:pressed {{
-        border-bottom: 1px solid {EDGE}; padding-top: 2px;
+        background-color: {_mix(GRAY_HV, FG, 0.06)};
     }}
+    QPushButton#icon_btn_danger:hover {{ background-color: {DANGER_BG}; border: 1px solid {_rgba(DUPE_RED, 0.45)}; }}
     QPushButton#icon_btn:disabled, QPushButton#icon_btn_danger:disabled, QPushButton#icon_btn_green:disabled {{
-        background-color: {_mix(GRAY_BTN, BG3, 0.5)}; border-bottom: 3px solid {LINE};
+        background-color: {_mix(GRAY_BTN, BG, 0.5)};
     }}
-    QPushButton#icon_btn_danger {{ color: {DUPE_RED}; }}
-    QPushButton#icon_btn_green {{ color: {GREEN}; }}
 
-    /* ────────────────  КНОПКИ УПРАВЛЕНИЯ ОКНОМ  ──────────────── */
+    /* полоса иконок разделов */
+    QFrame#rail {{ background-color: {NAV_BG}; border: none; border-right: 1px solid {LINE}; }}
+    QPushButton#rail_btn {{
+        background-color: transparent; border: none; border-radius: 10px; padding: 0px;
+    }}
+    QPushButton#rail_btn:hover {{ background-color: {GRAY_HV}; }}
+    QPushButton#rail_btn:checked {{ background-color: {ACC_SOFT_BG}; }}
+    QPushButton#rail_btn:pressed {{ background-color: {_rgba(ACCENT, 0.20)}; }}
+
+    /* кнопки окна */
     QPushButton#win_btn, QPushButton#win_close {{
-        background: transparent;
-        border: none;
-        border-radius: {R_SM}px;
-        padding: 0px;
-        color: {FG2};
+        background: transparent; border: none; border-radius: {R_SM}px; padding: 0px; color: {FG2};
     }}
-    QPushButton#win_btn:hover {{ background-color: {_veil(0.08)}; }}
-    QPushButton#win_btn:pressed {{ background-color: {_veil(0.14)}; padding: 0px; border: none; }}
-    QPushButton#win_close:hover {{ background-color: {DUPE_RED}; color: #ffffff; }}
-    QPushButton#win_close:pressed {{ background-color: {_mix(DUPE_RED, "#000000", 0.25)}; padding: 0px; border: none; }}
+    QPushButton#win_btn:hover {{ background-color: {GRAY_HV}; }}
+    QPushButton#win_close:hover {{ background-color: {DUPE_RED}; }}
 
-    /* ─────────────────────────  ТАБЛИЦЫ  ───────────────────────── */
+    /* ── таблицы ── */
     QTableWidget {{
         background-color: {SURFACE};
         alternate-background-color: {ROW_ODD};
-        gridline-color: {DIVIDER};
+        gridline-color: transparent;
         border: 1px solid {LINE};
-        border-radius: {R_MD}px;
-        selection-background-color: {_rgba(ACCENT, 0.22)};
+        border-radius: {R_LG}px;
+        selection-background-color: {_rgba(ACCENT, 0.16)};
         selection-color: {FG};
         outline: none;
     }}
-    QTableWidget::item {{
-        padding: 5px 8px;
-        border: none;
-        border-bottom: 1px solid {DIVIDER};
-    }}
+    QTableWidget::item {{ padding: 6px 10px; border: none; border-bottom: 1px solid {DIVIDER}; }}
     QTableWidget::item:hover {{ background-color: {HOVER_ROW}; }}
-    QTableWidget::item:selected {{ background-color: {_rgba(ACCENT, 0.22)}; color: {FG}; }}
-    QTableWidget::item:focus {{ outline: none; }}
+    QTableWidget::item:selected {{ background-color: {_rgba(ACCENT, 0.16)}; color: {FG}; }}
     QHeaderView {{ background: transparent; }}
     QHeaderView::section {{
-        background-color: {BG3};
-        color: {FG2};
-        padding: 8px 8px 7px 8px;
-        border: none;
-        border-bottom: 2px solid {HEAD_RULE};
-        font-weight: 600;
-        font-size: 9.5pt;
+        background-color: {SURFACE}; color: {FG2};
+        padding: 9px 10px; border: none; border-bottom: 1px solid {LINE};
+        font-weight: 600; font-size: 9pt;
     }}
     QHeaderView::section:hover {{ color: {FG}; }}
-    QTableCornerButton::section {{ background-color: {BG3}; border: none; }}
+    QTableCornerButton::section {{ background-color: {SURFACE}; border: none; }}
 
-    /* ────────────────────────  ПРОГРЕСС  ──────────────────────── */
     QProgressBar {{
-        background-color: {_mix(SURFACE, FG, 0.08)};
-        border: none;
-        border-radius: 2px;
-        height: 6px;
-        text-align: center;
-        color: transparent;
+        background-color: {_mix(SURFACE, FG, 0.07)}; border: none; border-radius: 3px;
+        height: 6px; text-align: center; color: transparent;
     }}
-    QProgressBar::chunk {{ background-color: {ACCENT}; border-radius: 2px; }}
+    QProgressBar::chunk {{ background-color: {ACCENT}; border-radius: 3px; }}
 
-    /* ───────────────────────  ПОЛОСЫ ПРОКРУТКИ  ─────────────────────── */
-    QScrollBar:vertical {{ background: transparent; width: 9px; margin: 3px 2px 3px 0px; }}
-    QScrollBar::handle:vertical {{ background: {_rgba(FG3, 0.55)}; border-radius: 2px; min-height: 34px; }}
-    QScrollBar::handle:vertical:hover {{ background: {ACCENT}; }}
-    QScrollBar:horizontal {{ background: transparent; height: 9px; margin: 0px 3px 2px 3px; }}
-    QScrollBar::handle:horizontal {{ background: {_rgba(FG3, 0.55)}; border-radius: 2px; min-width: 34px; }}
-    QScrollBar::handle:horizontal:hover {{ background: {ACCENT}; }}
+    QScrollBar:vertical {{ background: transparent; width: 10px; margin: 4px 2px 4px 0px; }}
+    QScrollBar::handle:vertical {{ background: {_rgba(FG3, 0.45)}; border-radius: 4px; min-height: 32px; }}
+    QScrollBar::handle:vertical:hover {{ background: {_rgba(FG3, 0.8)}; }}
+    QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 0px 4px 2px 4px; }}
+    QScrollBar::handle:horizontal {{ background: {_rgba(FG3, 0.45)}; border-radius: 4px; min-width: 32px; }}
+    QScrollBar::handle:horizontal:hover {{ background: {_rgba(FG3, 0.8)}; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; width: 0; }}
     QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
     QScrollArea {{ background: transparent; border: none; }}
 
-    /* ─────────────────────────  МЕНЮ  ───────────────────────── */
     QMenu {{
-        background-color: {BG3};
-        color: {FG};
-        border: 1px solid {LINE_HI};
-        border-radius: {R_MD}px;
-        padding: 5px;
+        background-color: {BG3}; color: {FG};
+        border: 1px solid {LINE}; border-radius: {R_LG}px; padding: 6px;
     }}
     QMenu::item {{ padding: 7px 18px 7px 12px; border-radius: {R_SM}px; color: {FG}; }}
-    QMenu::item:selected {{ background-color: {ACCENT}; color: {ON_ACCENT}; }}
+    QMenu::item:selected {{ background-color: {ACC_SOFT_BG}; color: {FG}; }}
     QMenu::separator {{ height: 1px; background: {LINE}; margin: 5px 6px; }}
     QMenu::icon {{ padding-left: 8px; }}
 
-    /* ───────────────────────  ЧЕКБОКСЫ / СПИСКИ  ─────────────────────── */
     QCheckBox {{ spacing: 9px; background: transparent; }}
     QCheckBox::indicator {{
-        width: 16px; height: 16px;
-        border: 1px solid {FG3};
-        border-radius: 3px;
-        background-color: {SURFACE};
+        width: 16px; height: 16px; border: 1px solid {LINE_HI};
+        border-radius: 5px; background-color: {SURFACE};
     }}
     QCheckBox::indicator:hover {{ border: 1px solid {ACCENT}; }}
-    QCheckBox::indicator:checked {{
-        background-color: {ACCENT};
-        border: 1px solid {ACC_EDGE};
-        {chk_img}
-    }}
+    QCheckBox::indicator:checked {{ background-color: {ACCENT}; border: 1px solid {ACCENT}; {chk_img} }}
     QCheckBox:disabled {{ color: {FG3}; }}
-    QRadioButton {{ spacing: 8px; }}
     QComboBox {{
-        background-color: {SURFACE};
-        color: {FG};
-        border: 1px solid {LINE};
-        border-bottom: 2px solid {LINE_HI};
-        border-radius: {R_SM}px;
-        padding: 6px 11px 5px 11px;
+        background-color: {SURFACE}; color: {FG};
+        border: 1px solid {LINE}; border-radius: {R_MD}px; padding: 6px 11px;
     }}
-    QComboBox:hover {{ border-bottom: 2px solid {FG3}; }}
-    QComboBox:focus {{ border-bottom: 2px solid {ACCENT}; }}
-    QComboBox:disabled {{ color: {FG3}; }}
+    QComboBox:hover {{ border: 1px solid {LINE_HI}; }}
+    QComboBox:focus {{ border: 1px solid {ACCENT}; }}
+    QComboBox:disabled {{ color: {FG3}; background-color: {BG}; }}
     QComboBox::drop-down {{ border: none; width: 22px; }}
     QComboBox QAbstractItemView {{
-        background-color: {BG3};
-        border: 1px solid {LINE_HI};
-        border-radius: {R_SM}px;
-        selection-background-color: {ACCENT};
-        selection-color: {ON_ACCENT};
-        padding: 3px;
-        outline: none;
+        background-color: {BG3}; border: 1px solid {LINE}; border-radius: {R_MD}px;
+        selection-background-color: {ACC_SOFT_BG}; selection-color: {FG}; padding: 4px; outline: none;
     }}
-    QListWidget {{
-        background-color: {SURFACE}; border: 1px solid {LINE}; border-radius: {R_SM}px;
-        outline: none;
-    }}
+    QListWidget {{ background-color: {SURFACE}; border: 1px solid {LINE}; border-radius: {R_MD}px; outline: none; }}
     QListWidget::item {{ padding: 6px 8px; border-radius: {R_SM}px; }}
-    QListWidget::item:selected {{ background-color: {ACCENT}; color: {ON_ACCENT}; }}
+    QListWidget::item:selected {{ background-color: {ACC_SOFT_BG}; color: {FG}; }}
     QListWidget::item:hover:!selected {{ background-color: {HOVER_ROW}; }}
     QMessageBox {{ background-color: {BG3}; }}
-    QMessageBox QLabel {{ color: {FG}; font-size: 10.5pt; }}
-    QMessageBox QPushButton {{ min-width: 96px; }}
-
-    /* ═══════════════════  КАРКАС ОКНА  ═══════════════════ */
-    QFrame#titlebar {{ background-color: {BG2}; border: none; border-bottom: 1px solid {LINE}; }}
-    QLabel#wordmark {{ color: {FG}; font-size: 12pt; font-weight: 700; letter-spacing: 2px; }}
-    QLabel#wordmark_sub {{ color: {FG3}; font-size: 9pt; font-weight: 500; }}
-
-    /* Боковое меню — свой набор цветов (у «Бланка» корешок тёмный) */
-    QFrame#nav_panel {{ background-color: {NAV_BG}; border: none; border-right: 1px solid {_rgba('#000000', 0.25) if not IS_LIGHT else NAV_BG}; }}
-    QFrame#nav_panel QLabel {{ color: {NAV_FG}; }}
-    QFrame#nav_panel QLabel#wordmark {{ color: {NAV_FG_HI}; }}
-    QFrame#nav_panel QLabel#wordmark_sub {{ color: {NAV_FG}; }}
-    QFrame#nav_panel QLabel#eyebrow {{ color: {_mix(NAV_FG, NAV_BG, 0.25)}; }}
-    QFrame#nav_panel QLabel#muted {{ color: {_mix(NAV_FG, NAV_BG, 0.2)}; }}
-    QFrame#icon_rail {{ background-color: {BG2}; border: none; }}
-    QFrame#side_card {{
-        background-color: {_rgba('#ffffff', 0.04)};
-        border: 1px solid {NAV_LINE};
-        border-radius: {R_MD}px;
-    }}
-    QFrame#nav_sep {{ background-color: {NAV_LINE}; border: none; }}
-
-    QPushButton#navitem {{
-        background-color: transparent;
-        color: {NAV_FG};
-        border: 1px solid transparent;
-        border-radius: {R_MD}px;
-        margin: 1px 12px 1px 12px;
-        text-align: left;
-        padding: 10px 12px 10px 12px;
-        font-size: 11pt;
-        font-weight: 500;
-    }}
-    QPushButton#navitem:hover {{ background-color: {_rgba('#ffffff', 0.06)}; color: {NAV_FG_HI}; border: 1px solid transparent; }}
-    QPushButton#navitem:pressed {{ background-color: {_rgba('#ffffff', 0.10)}; padding: 10px 12px 10px 12px; }}
-    QPushButton#navitem:checked {{
-        background-color: {NAV_ACTIVE_BG};
-        color: {NAV_ACTIVE_FG};
-        border: 1px solid {NAV_ACTIVE_BG};
-        font-weight: 700;
-    }}
+    QMessageBox QLabel {{ color: {FG}; font-size: 10pt; }}
+    QMessageBox QPushButton {{ min-width: 92px; }}
 
     QWidget#content_area {{ background-color: {BG}; }}
-    QFrame#topbar {{ background: transparent; border: none; }}
-    QFrame#statusbar {{ background-color: {BG2}; border: none; border-top: 1px solid {LINE}; }}
-    QFrame#content_card {{
-        background-color: {BG3};
-        border: 1px solid {LINE};
-        border-radius: {R_LG}px;
-    }}
+    QFrame#s_header {{ background: transparent; border: none; }}
+    QLabel#s_page_title {{ font-size: 18pt; font-weight: 600; color: {FG}; }}
+    QFrame#preview_panel {{ background-color: {_mix(SURFACE, BG, 0.5)}; border: 1px solid {LINE}; border-radius: {R_MD}px; }}
     """
 
 
@@ -1648,7 +1510,8 @@ class _DbBadge(QWidget):
         self._timer = QTimer(self)
         self._timer.setInterval(40)
         self._timer.timeout.connect(self._tick)
-        self._timer.start()
+        if not STUDIO:            # в «Ониксе / Кварце» знак без бегущей волны
+            self._timer.start()
 
         self._hover_anim = QVariantAnimation(self)
         self._hover_anim.setDuration(260)
@@ -1656,11 +1519,6 @@ class _DbBadge(QWidget):
         self._hover_anim.valueChanged.connect(self._on_hover)
 
     def _tick(self):
-        if CONSOLE:
-            # 40 мс × 60 ≈ 2,4 с на цикл лампы
-            self._phase = (self._phase + 1.0 / 60.0) % 1.0
-            self.update()
-            return
         self._phase += 0.011 + 0.020 * self._hover
         if self._phase > 1.35:
             self._phase = -0.35
@@ -1703,45 +1561,34 @@ class _DbBadge(QWidget):
         g.setColorAt(1.0, QColor(base))
         return g
 
-    def _paint_console(self, p):
-        """«Пульт / Бланк»: знак — клавиша с тремя прорезями (стопка базы),
-        над ней сигнальная лампа, которая коротко мигает раз в пару секунд.
-        При наведении клавиша проминается."""
+    def _paint_studio(self, p):
+        """«Оникс / Кварц»: акцентная плитка с тремя белыми пластинами;
+        при наведении пластины чуть расходятся."""
         w, h = self.width(), self.height()
         r = min(w, h)
         hv = self._hover
-        edge = r * 0.07 * (1.0 - 0.7 * hv)          # высота нижней кромки
-        key = QRectF(r * 0.06, r * 0.06 + (r * 0.07 - edge), w - r * 0.12, h - r * 0.12 - r * 0.07)
-        rad = r * 0.16
-        cap = QColor(NAV_ACTIVE_BG)
-        base = QColor(_mix(NAV_ACTIVE_BG, "#000000", 0.42))
+        tile = QRectF(0.5, 0.5, w - 1, h - 1)
         p.setPen(Qt.NoPen)
-        p.setBrush(base)
-        p.drawRoundedRect(key.translated(0, edge), rad, rad)
-        p.setBrush(cap)
-        p.drawRoundedRect(key, rad, rad)
-        # три прорези — сужаются книзу, как силуэт базы
-        ink = QColor(NAV_ACTIVE_FG)
-        slot_h = r * 0.085
-        gap = r * 0.075
-        cx = key.center().x()
-        y = key.top() + key.height() * 0.30
-        for wf in (0.50, 0.38, 0.26):
-            sw = r * wf
-            p.setBrush(ink)
-            p.drawRoundedRect(QRectF(cx - sw / 2.0, y, sw, slot_h), slot_h / 2.0, slot_h / 2.0)
-            y += slot_h + gap
-        # лампа в правом верхнем углу
-        lit = (self._phase % 1.0) < 0.12 or hv > 0.5
-        lamp = QColor(GREEN if lit else _mix(NAV_ACTIVE_FG, NAV_ACTIVE_BG, 0.55))
-        p.setBrush(lamp)
-        p.drawEllipse(QPointF(key.right() - r * 0.14, key.top() + r * 0.14), r * 0.055, r * 0.055)
+        p.setBrush(QColor(_mix(ACCENT, ACCENT_HV, hv * 0.6)))
+        p.drawRoundedRect(tile, r * 0.28, r * 0.28)
+        plate_h = r * 0.11
+        gap = r * 0.075 + r * 0.03 * hv
+        widths = (0.52, 0.40, 0.28)
+        total = len(widths) * plate_h + (len(widths) - 1) * gap
+        y = (h - total) / 2.0
+        for i, wf in enumerate(widths):
+            pw = r * wf
+            c = QColor(ON_ACCENT)
+            c.setAlphaF(1.0 - i * 0.18)
+            p.setBrush(c)
+            p.drawRoundedRect(QRectF((w - pw) / 2.0, y, pw, plate_h), plate_h / 2.0, plate_h / 2.0)
+            y += plate_h + gap
 
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        if CONSOLE:
-            self._paint_console(p)
+        if STUDIO:
+            self._paint_studio(p)
             p.end()
             return
         w, h = self.width(), self.height()
@@ -1814,12 +1661,12 @@ class BubbleTip(QFrame):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(12, 7, 12, 7)
         lay.addWidget(self._lbl)
-        if CONSOLE:
+        if STUDIO:
+            tip_bg = "#1c1c21" if IS_LIGHT else "#2e2f36"
             self.setStyleSheet(
-                f"QFrame {{ background-color:{FG}; border:none;"
-                f"         border-radius:{STYLE['radius_sm']}px; }}"
-                f"QLabel {{ color:{BG3}; font-size:10pt; font-weight:600;"
-                "          background:transparent; border:none; }")
+                f"QFrame {{ background-color:{tip_bg}; border:none; border-radius:7px; }}"
+                "QLabel { color:#f4f4f6; font-size:9.5pt; font-weight:600;"
+                "         background:transparent; border:none; }")
         else:
             self.setStyleSheet(
                 f"QFrame {{ background-color:{_mix(BG3, '#ffffff', 0.05)};"
@@ -1852,6 +1699,22 @@ class BubbleTip(QFrame):
             win_left, win_top = top_left.x(), top_left.y()
             win_right = win_left + win.width()
             win_bottom = win_top + win.height()
+
+        if prefer == "right":
+            # справа от кнопки, по центру по высоте (полоса иконок «Оникс / Кварц»)
+            gp = btn.mapToGlobal(QPoint(btn.width() + 10, btn.height() // 2))
+            self.move(gp.x(), gp.y() - self.height() // 2)
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")    # «нечего отключать» — не ошибка
+                self._disconnect_anim()
+            self._anim.stop()
+            if not self.isVisible():
+                self.show()
+            self._anim.setStartValue(float(self._eff.opacity()))
+            self._anim.setEndValue(1.0)
+            self._anim.start()
+            return
 
         gp_top = btn.mapToGlobal(QPoint(btn.width() // 2, 0))
         x_above = gp_top.x() - self.width() // 2
@@ -1938,17 +1801,6 @@ class PulseDot(QWidget):
         p.setRenderHint(QPainter.Antialiasing)
         c = QColor(self._color)
         cx, cy = self.width() / 2.0, self.height() / 2.0
-        if CONSOLE:
-            # индикаторная лампа: ровное ядро и медленно дышащий ободок
-            ring = QColor(c)
-            ring.setAlphaF(0.18 + 0.22 * self._t)
-            p.setPen(Qt.NoPen)
-            p.setBrush(ring)
-            p.drawEllipse(QPointF(cx, cy), self.width() * 0.5, self.height() * 0.5)
-            p.setBrush(c)
-            p.drawEllipse(QPointF(cx, cy), self.width() * 0.28, self.height() * 0.28)
-            p.end()
-            return
         halo = QColor(c)
         halo.setAlphaF(0.10 + 0.30 * self._t)
         p.setPen(Qt.NoPen)
@@ -2019,38 +1871,21 @@ class GradientLabel(QWidget):
     def __init__(self, text="", point_size=16.0, parent=None):
         super().__init__(parent)
         self._text = text
-        self._font = (_ui_font(point_size + 3, QFont.DemiBold) if CONSOLE
+        self._font = (_ui_font(point_size + 2, QFont.DemiBold) if STUDIO
                       else _ui_font(point_size, QFont.ExtraBold))
         self._phase = -0.4
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         self._timer = QTimer(self)
         self._timer.setInterval(45)
         self._timer.timeout.connect(self._tick)
-        # «Пульт»: вместо бегущей волны — название раздела печатается по
-        # буквам при переключении (одно движение в ответ на действие).
-        self._shown = len(text)
-        self._type_anim = QVariantAnimation(self)
-        self._type_anim.setEasingCurve(QEasingCurve.OutCubic)
-        self._type_anim.valueChanged.connect(self._on_type)
-        if not CONSOLE:
+        if not STUDIO:            # в «Ониксе / Кварце» заголовок без бегущей волны
             self._timer.start()
-
-    def _on_type(self, v):
-        self._shown = int(round(float(v)))
-        self.update()
 
     def setText(self, text):
         if text == self._text:
             return
         self._text = text
         self._phase = -0.4
-        if CONSOLE:
-            self._type_anim.stop()
-            self._type_anim.setStartValue(0.0)
-            self._type_anim.setEndValue(float(len(text)))
-            self._type_anim.setDuration(int(min(420, 40 * len(text) + 120)))
-            self._shown = 0
-            self._type_anim.start()
         self.updateGeometry()
         self.update()
 
@@ -2070,25 +1905,14 @@ class GradientLabel(QWidget):
             self._phase = -0.4
         self.update()
 
-    def _paint_console(self, p):
-        shown = self._text[:max(0, min(len(self._text), self._shown))]
-        p.setPen(QColor(FG))
-        p.drawText(self.rect(), Qt.AlignLeft | Qt.AlignVCenter, shown)
-        if len(shown) < len(self._text):
-            # курсор-плашка печатающего устройства
-            fm = QFontMetrics(self._font)
-            x = fm.horizontalAdvance(shown) + 2
-            ch = fm.ascent() * 0.8
-            y = (self.height() - ch) / 2.0 + 1
-            p.fillRect(QRectF(x, y, max(3.0, fm.averageCharWidth() * 0.55), ch), QColor(ACCENT))
-
     def paintEvent(self, _e):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.TextAntialiasing)
         p.setFont(self._font)
-        if CONSOLE:
-            self._paint_console(p)
+        if STUDIO:
+            p.setPen(QColor(FG))
+            p.drawText(self.rect(), Qt.AlignLeft | Qt.AlignVCenter, self._text)
             p.end()
             return
 
@@ -2163,7 +1987,7 @@ class RippleFilter(QObject):
     """Вешает круг-отклик на нажатие любой кнопки."""
 
     def eventFilter(self, obj, event):
-        if CONSOLE:
+        if STUDIO:
             return False
         if (event.type() == QEvent.MouseButtonPress
                 and isinstance(obj, QAbstractButton)
@@ -2195,18 +2019,7 @@ class SweepLine(QWidget):
         self._flow_timer = QTimer(self)
         self._flow_timer.setInterval(50)
         self._flow_timer.timeout.connect(self._flow_tick)
-        if not CONSOLE:
-            self._flow_timer.start()
-        # «Пульт»: линия под заголовком заполняется слева направо, как шкала,
-        # и затем гаснет. Два значения: сколько заполнено и насколько ярко.
-        self._fill = 0.0
-        self._fill_alpha = 0.0
-        self._fill_anim = QVariantAnimation(self)
-        self._fill_anim.setStartValue(0.0)
-        self._fill_anim.setKeyValueAt(0.55, 1.0)
-        self._fill_anim.setEndValue(2.0)
-        self._fill_anim.setDuration(900)
-        self._fill_anim.valueChanged.connect(self._on_fill)
+        self._flow_timer.start()
         self._anim = QVariantAnimation(self)
         self._anim.setStartValue(-0.35)
         self._anim.setEndValue(1.35)
@@ -2216,23 +2029,8 @@ class SweepLine(QWidget):
         self._anim.finished.connect(self._on_done)
 
     def sweep(self):
-        if CONSOLE:
-            self._fill_anim.stop()
-            self._fill_anim.start()
-            return
         self._anim.stop()
         self._anim.start()
-
-    def _on_fill(self, v):
-        v = float(v)
-        if v <= 1.0:
-            # быстрое заполнение с замедлением к концу
-            self._fill = 1.0 - (1.0 - v) ** 3
-            self._fill_alpha = 1.0
-        else:
-            self._fill = 1.0
-            self._fill_alpha = max(0.0, 2.0 - v)
-        self.update()
 
     def _on_v(self, v):
         self._phase = float(v)
@@ -2252,14 +2050,6 @@ class SweepLine(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         w, h = self.width(), self.height()
-        if CONSOLE:
-            p.fillRect(0, 0, w, h, QColor(BORDER))
-            if self._fill_alpha > 0.01:
-                c = QColor(ACCENT)
-                c.setAlphaF(self._fill_alpha)
-                p.fillRect(QRectF(0, 0, w * self._fill, h), c)
-            p.end()
-            return
         base = QColor(FG)
         base.setAlpha(30 if IS_LIGHT else 16)
         p.fillRect(0, 0, w, h, base)
@@ -2328,34 +2118,15 @@ class NavIndicator(QWidget):
         self._pulse.addAnimation(up)
         self._pulse.addAnimation(down)
         self._pulse.setLoopCount(-1)
-        if not CONSOLE:
-            self._pulse.start()
+        self._pulse.start()
 
     def _on_v(self, v):
         self._glow = float(v)
         self.update()
 
-    def _paint_lamp(self, p):
-        """«Пульт»: сигнальная лампа на горящей клавише — ободок и ядро."""
-        w, h = self.width(), self.height()
-        c = QPointF(w / 2.0, h / 2.0)
-        r = min(w, h) / 2.0
-        ring = QColor(NAV_ACTIVE_FG)
-        ring.setAlphaF(0.22)
-        p.setPen(Qt.NoPen)
-        p.setBrush(ring)
-        p.drawEllipse(c, r, r)
-        core = QColor(NAV_ACTIVE_FG)
-        p.setBrush(core)
-        p.drawEllipse(c, r * 0.45, r * 0.45)
-
     def paintEvent(self, _e):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        if CONSOLE:
-            self._paint_lamp(p)
-            p.end()
-            return
         w, h = self.width(), self.height()
         # мягкий ореол
         halo = QColor(ACCENT_HV)
@@ -2404,11 +2175,10 @@ class Toast(QFrame):
         self.setCursor(Qt.PointingHandCursor)
         # Селектор с именем обязателен: иначе рамка и скругление достались бы
         # ещё и всем подписям внутри карточки.
-        if CONSOLE:
-            # плоская карточка с толстой цветной кромкой слева
+        if STUDIO:
             self.setStyleSheet(
-                f"QFrame#toast {{ background-color:{BG3}; border:1px solid {_mix(BORDER, FG, 0.25)};"
-                f" border-left:5px solid {color}; border-radius:{STYLE['radius_md']}px; }}")
+                f"QFrame#toast {{ background-color:{BG3}; border:1px solid {BORDER};"
+                " border-radius:12px; }")
         else:
             self.setStyleSheet(
                 f"QFrame#toast {{ background-color:{'#ffffff' if IS_LIGHT else _mix(BG3, '#ffffff', 0.07)};"
@@ -2421,7 +2191,7 @@ class Toast(QFrame):
         bar = QFrame()
         bar.setFixedWidth(3)
         bar.setStyleSheet(f"background-color:{color}; border-radius:2px;")
-        if not CONSOLE:          # в «Пульте» роль полоски играет левая кромка карточки
+        if not STUDIO:
             lay.addWidget(bar)
 
         ic = QLabel()
@@ -2429,6 +2199,11 @@ class Toast(QFrame):
         if isinstance(qic, QIcon):
             ic.setPixmap(qic.pixmap(20, 20))
         ic.setFixedWidth(22)
+        if STUDIO:
+            # значок в мягком цветном кружке
+            ic.setFixedSize(34, 34)
+            ic.setAlignment(Qt.AlignCenter)
+            ic.setStyleSheet(f"background-color:{_rgba(color, 0.14)}; border-radius:17px;")
         lay.addWidget(ic, 0, Qt.AlignTop)
 
         col = QVBoxLayout()
@@ -2463,8 +2238,7 @@ class Toast(QFrame):
 
     # ── появление: одновременно всплывает и проявляется ──
     def appear(self, target_pos):
-        # «Пульт»: карточка выезжает справа, Vortex — всплывает снизу
-        self.move(target_pos + (QPoint(36, 0) if CONSOLE else QPoint(0, 18)))
+        self.move(target_pos + QPoint(0, 18))
         self.show()
         self.raise_()
         slide = QPropertyAnimation(self, b"pos", self)
@@ -2618,7 +2392,7 @@ class CommandPalette(QDialog):
         outer.setContentsMargins(0, 0, 0, 0)
         card = QFrame()
         card.setObjectName("palette_card")
-        card.setStyleSheet(_console_card_qss("palette_card") if CONSOLE else (
+        card.setStyleSheet(_studio_popup_qss("palette_card") if STUDIO else (
             f"QFrame#palette_card {{ background-color:{'#ffffff' if IS_LIGHT else _mix(BG3, '#ffffff', 0.05)};"
             f" border:1px solid {_rgba(ACCENT, 0.45)}; border-radius:16px; }}"))
         outer.addWidget(card)
@@ -2753,8 +2527,8 @@ class ThemeTile(QWidget):
         p.save()
         p.setClipPath(path)
 
-        if d.get("design") == "console":
-            self._paint_console_preview(p, d, w, ph, prev)
+        if d.get("design") == "studio":
+            self._paint_studio_preview(p, d, w, ph, prev)
         else:
             self._paint_vortex_preview(p, d, w, ph, prev)
         p.restore()
@@ -2781,45 +2555,36 @@ class ThemeTile(QWidget):
         p.end()
 
     @staticmethod
-    def _paint_console_preview(p, d, w, ph, prev):
-        """Миниатюра «Пульта/Бланка»: корешок меню с горящей клавишей,
-        плоский лист, строка-поле с подчёркиванием и клавиша с кромкой."""
+    def _paint_studio_preview(p, d, w, ph, prev):
+        """Миниатюра «Оникса / Кварца»: узкая полоса иконок, шапка и
+        две карточки-секции с акцентной кнопкой."""
         p.fillRect(prev, QColor(d["BG"]))
         p.setPen(Qt.NoPen)
-        p.fillRect(QRectF(1, 1, 46, ph), QColor(d["NAV_BG"]))
-        # пункты меню: первый — горящая клавиша
-        for i in range(3):
-            y = 14 + i * 15
-            if i == 0:
-                p.setBrush(QColor(d.get("NAV_ACTIVE_BG", d["ACCENT"])))
-                p.drawRoundedRect(QRectF(6, y - 3, 35, 11), 2.5, 2.5)
-                p.setBrush(QColor(d.get("NAV_ACTIVE_FG", d["BG"])))
-                p.drawEllipse(QPointF(35, y + 2.5), 2, 2)
-            else:
-                col = QColor(d.get("NAV_FG", d["FG3"]))
-                col.setAlphaF(0.7)
-                p.setBrush(col)
-                p.drawRoundedRect(QRectF(10, y, 24 - i * 3, 4), 1.5, 1.5)
-        # лист
-        p.setBrush(QColor(d["BG3"]))
-        p.drawRoundedRect(QRectF(56, 10, w - 68, ph - 20), 4, 4)
-        # заголовок + шкала
+        p.fillRect(QRectF(1, 1, 20, ph), QColor(d["NAV_BG"]))
+        line = QColor(d["BORDER"])
+        p.fillRect(QRectF(21, 1, 1, ph), line)
+        p.setBrush(QColor(d["ACCENT"]))
+        p.drawRoundedRect(QRectF(6, 7, 10, 10), 3, 3)
+        for i in range(4):
+            col = QColor(d["ACCENT"]) if i == 0 else QColor(d["FG3"])
+            col.setAlphaF(0.25 if i == 0 else 0.55)
+            p.setBrush(col)
+            p.drawRoundedRect(QRectF(5, 24 + i * 13, 12, 9), 3, 3)
         p.setBrush(QColor(d["FG"]))
-        p.drawRect(QRectF(64, 18, 52, 5))
-        p.setBrush(QColor(d["BORDER"]))
-        p.drawRect(QRectF(64, 28, w - 84, 1.5))
+        p.drawRoundedRect(QRectF(30, 9, 40, 5), 2, 2)
+        for x, cw in ((30, 62), (98, w - 108)):
+            p.setBrush(line)
+            p.drawRoundedRect(QRectF(x - 0.5, 21.5, cw + 1, ph - 30), 5, 5)
+            p.setBrush(QColor(d["BG3"]))
+            p.drawRoundedRect(QRectF(x, 22, cw, ph - 31), 5, 5)
+        fg2 = QColor(d["FG2"])
+        fg2.setAlphaF(0.55)
+        p.setBrush(fg2)
+        for i in range(3):
+            p.drawRoundedRect(QRectF(36, 30 + i * 9, 44 - i * 8, 3.5), 1.5, 1.5)
+            p.drawRoundedRect(QRectF(104, 30 + i * 9, w - 128 - i * 10, 3.5), 1.5, 1.5)
         p.setBrush(QColor(d["ACCENT"]))
-        p.drawRect(QRectF(64, 28, 30, 1.5))
-        # поле бланка с подчёркиванием
-        p.setBrush(QColor(d["SURFACE"]))
-        p.drawRect(QRectF(64, 36, w - 84, 13))
-        p.setBrush(QColor(d["FG3"]))
-        p.drawRect(QRectF(64, 48, w - 84, 1.5))
-        # клавиша с нижней кромкой
-        p.setBrush(QColor(d.get("ACCENT_DEEP", d["ACCENT"])))
-        p.drawRoundedRect(QRectF(64, ph - 30, 44, 15), 3, 3)
-        p.setBrush(QColor(d["ACCENT"]))
-        p.drawRoundedRect(QRectF(64, ph - 30, 44, 12), 3, 3)
+        p.drawRoundedRect(QRectF(36, ph - 24, 50, 11), 4, 4)
 
     @staticmethod
     def _paint_vortex_preview(p, d, w, ph, prev):
@@ -2864,7 +2629,7 @@ class ThemePicker(QDialog):
         outer.setContentsMargins(0, 0, 0, 0)
         card = QFrame()
         card.setObjectName("theme_card")
-        card.setStyleSheet(_console_card_qss("theme_card") if CONSOLE else (
+        card.setStyleSheet(_studio_popup_qss("theme_card") if STUDIO else (
             f"QFrame#theme_card {{ background-color:{'#ffffff' if IS_LIGHT else _mix(BG3, '#ffffff', 0.05)};"
             f" border:1px solid {_rgba(ACCENT, 0.35)}; border-radius:18px; }}"))
         outer.addWidget(card)
@@ -2923,7 +2688,7 @@ class AboutCard(QDialog):
         outer.setContentsMargins(0, 0, 0, 0)
         card = QFrame()
         card.setObjectName("about_card")
-        card.setStyleSheet(_console_card_qss("about_card") if CONSOLE else (
+        card.setStyleSheet(_studio_popup_qss("about_card") if STUDIO else (
             f"QFrame#about_card {{ background-color:{'#ffffff' if IS_LIGHT else _mix(BG3, '#ffffff', 0.05)};"
             f" border:1px solid {_rgba(ACCENT, 0.35)}; border-radius:18px; }}"))
         outer.addWidget(card)
@@ -2955,7 +2720,8 @@ class AboutCard(QDialog):
         lay.addWidget(ver)
 
         theme_name = C.THEMES.get(getattr(C, "_active_theme_name", C.DEFAULT_THEME), {}).get("label", "Vortex")
-        th = QLabel(f"Тема: {theme_name}  ·  переключается в шапке окна")
+        th = QLabel(f"Тема: {theme_name}  ·  переключается "
+                    + ("кнопкой с палитрой в полосе слева" if STUDIO else "в шапке окна"))
         th.setObjectName("muted")
         lay.addWidget(th)
 
@@ -2966,7 +2732,7 @@ class AboutCard(QDialog):
             line.setStyleSheet(f"background-color:{_veil(0.09)}; border:none;")
             lay.addWidget(line)
             lay.addSpacing(10)
-            cap = QLabel("Что изменилось" if CONSOLE else "ЧТО ИЗМЕНИЛОСЬ")
+            cap = QLabel("Что изменилось" if STUDIO else "ЧТО ИЗМЕНИЛОСЬ")
             cap.setObjectName("eyebrow")
             lay.addWidget(cap)
             lay.addSpacing(4)
@@ -3007,9 +2773,8 @@ class NavItemBtn(QPushButton):
         self.setCursor(Qt.PointingHandCursor)
         self.setMinimumHeight(46)
 
-        self._ic_off = _icon(icon_name, NAV_FG if CONSOLE else FG2, fallback)
-        self._ic_on = _icon(icon_name, NAV_ACTIVE_FG if CONSOLE else ACCENT_HV, fallback)
-        self._rest = 0.88 if CONSOLE else 0.68     # непрозрачность неактивного пункта
+        self._ic_off = _icon(icon_name, FG2, fallback)
+        self._ic_on = _icon(icon_name, ACCENT_HV, fallback)
         if isinstance(self._ic_off, QIcon):
             self.setIcon(self._ic_off)
             self.setIconSize(QSize(19, 19))
@@ -3021,7 +2786,7 @@ class NavItemBtn(QPushButton):
 
         # Плавное «проявление» неактивных пунктов при наведении
         self._eff = QGraphicsOpacityEffect(self)
-        self._eff.setOpacity(self._rest)
+        self._eff.setOpacity(0.68)
         self.setGraphicsEffect(self._eff)
         self._anim = QPropertyAnimation(self._eff, b"opacity", self)
         self._anim.setDuration(170)
@@ -3035,19 +2800,12 @@ class NavItemBtn(QPushButton):
 
     # ── состояние ──
     def _on_toggle(self, checked):
-        self._fade_to(1.0 if checked else self._rest)
+        self._fade_to(1.0 if checked else 0.68)
         if isinstance(self._ic_off, QIcon):
             self.setIcon(self._ic_on if checked else self._ic_off)
-            if checked and not CONSOLE:
+            if checked:
                 self._pop_icon()
-        if checked and CONSOLE:
-            # горящая клавиша: сплошная заливка, тёмный текст
-            self.setStyleSheet(
-                "QPushButton#navitem {"
-                f"  background-color: {NAV_ACTIVE_BG}; color: {NAV_ACTIVE_FG};"
-                f"  border: 1px solid {NAV_ACTIVE_BG}; font-weight: 700;"
-                "}")
-        elif checked:
+        if checked:
             self.setStyleSheet(
                 "QPushButton#navitem {"
                 f"  background: qlineargradient(x1:0, y1:0, x2:1, y2:0,"
@@ -3084,7 +2842,7 @@ class NavItemBtn(QPushButton):
 
     def leaveEvent(self, e):
         if not self.isChecked():
-            self._fade_to(self._rest)
+            self._fade_to(0.68)
         super().leaveEvent(e)
 
 
@@ -3105,11 +2863,7 @@ class Sidebar(QWidget):
     def __init__(self, tab_names, on_tab, parent=None):
         super().__init__(parent)
         self.setFixedWidth(STYLE.get("sidebar_w", 262))
-        # Стиль без селектора на родителе перекрывает фон всех дочерних —
-        # в «Пульте/Бланке» у меню свой сплошной цвет, поэтому его не ставим
-        # (прозрачность и так задана общим QSS для QWidget).
-        if not CONSOLE:
-            self.setStyleSheet("background: transparent;")
+        self.setStyleSheet("background: transparent;")
 
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -3139,8 +2893,7 @@ class Sidebar(QWidget):
         name = QLabel("BASE")
         name.setObjectName("wordmark")
         dot = QLabel(".")
-        dot.setStyleSheet(f"color:{NAV_ACTIVE_BG if CONSOLE else ACCENT}; font-size:12pt;"
-                          " font-weight:800; background:transparent;")
+        dot.setStyleSheet(f"color:{ACCENT}; font-size:12pt; font-weight:800; background:transparent;")
         # Мигающая точка с плавным затуханием — «живой» акцент в статичном углу
         dot_eff = QGraphicsOpacityEffect(dot)
         dot.setGraphicsEffect(dot_eff)
@@ -3160,15 +2913,12 @@ class Sidebar(QWidget):
         self._title_dot_anim.addAnimation(d_up)
         self._title_dot_anim.addAnimation(d_down)
         self._title_dot_anim.setLoopCount(-1)
-        if CONSOLE:
-            dot_eff.setOpacity(1.0)          # у «Пульта» точка просто горит
-        else:
-            self._title_dot_anim.start()
+        self._title_dot_anim.start()
         name_row.addWidget(name)
         name_row.addWidget(dot)
         name_row.addStretch()
         titles.addLayout(name_row)
-        sub = QLabel("телефонные базы" if CONSOLE else "ТЕЛЕФОННЫЕ БАЗЫ")
+        sub = QLabel("ТЕЛЕФОННЫЕ БАЗЫ")
         sub.setObjectName("wordmark_sub")
         titles.addWidget(sub)
         head.addLayout(titles)
@@ -3185,7 +2935,7 @@ class Sidebar(QWidget):
         lay.addLayout(sep_wrap)
         lay.addSpacing(16)
 
-        eyebrow = QLabel("Разделы" if CONSOLE else "РАЗДЕЛЫ")
+        eyebrow = QLabel("РАЗДЕЛЫ")
         eyebrow.setObjectName("eyebrow")
         eb_wrap = QHBoxLayout()
         eb_wrap.setContentsMargins(20, 0, 16, 0)
@@ -3229,13 +2979,11 @@ class Sidebar(QWidget):
         row.setSpacing(8)
         row.addWidget(PulseDot(GREEN, 12))
         st = QLabel("Ядро активно")
-        st.setStyleSheet(f"color:{NAV_FG_HI if CONSOLE else FG}; font-size:9.5pt;"
-                         " font-weight:700; background:transparent;")
+        st.setStyleSheet(f"color:{FG}; font-size:9.5pt; font-weight:700; background:transparent;")
         row.addWidget(st)
         row.addStretch()
         cl.addLayout(row)
-        self.side_hint = QLabel(f"{THEME_LABEL} · версия {C.APP_VERSION}" if CONSOLE
-                                else f"Vortex UI · версия {C.APP_VERSION}")
+        self.side_hint = QLabel(f"Vortex UI · версия {C.APP_VERSION}")
         self.side_hint.setObjectName("muted")
         cl.addWidget(self.side_hint)
         card_wrap = QHBoxLayout()
@@ -3255,10 +3003,6 @@ class Sidebar(QWidget):
             return
         h = 22
         target = QRect(3, btn.y() + (btn.height() - h) // 2, 7, h)
-        if CONSOLE:
-            d = 14
-            target = QRect(btn.x() + btn.width() - 12 - 14 - d,
-                           btn.y() + (btn.height() - d) // 2, d, d)
         if not self._indicator.isVisible():
             self._indicator.setGeometry(target)
             self._indicator.show()
@@ -3695,135 +3439,139 @@ class App(QMainWindow):
         root.setContentsMargins(_m, _m, _m, _m)
         root.setSpacing(0)
 
-        self.titlebar = None
-        if self._frameless:
-            self.titlebar = TitleBar(self)
-            root.addWidget(self.titlebar)
-
-        # ── тело: боковое меню + рабочая область ──
-        body = QWidget()
-        body.setObjectName("content_area")
-        body_lay = QHBoxLayout(body)
-        body_lay.setContentsMargins(0, 0, 0, 0)
-        body_lay.setSpacing(0)
-        root.addWidget(body, 1)
-
         tab_names = [self.TAB_CLEAN, self.TAB_DUPES, self.TAB_CITY, self.TAB_EDIT, self.TAB_GEN, self.TAB_DEPOSITS]
-        self.header = Sidebar(tab_names, self._switch_tab)
-        self.header.badge.clicked.connect(self._open_palette)
-        body_lay.addWidget(self.header)
+        if STUDIO:
+            # «Оникс / Кварц»: свой каркас — полоса иконок слева, шапка с
+            # заголовком и кнопками окна, без строки состояния.
+            self._build_studio_shell(root, tab_names)
+        else:
+            self.titlebar = None
+            if self._frameless:
+                self.titlebar = TitleBar(self)
+                root.addWidget(self.titlebar)
 
-        right_col = QWidget()
-        right_col.setObjectName("content_area")
-        right_lay = QVBoxLayout(right_col)
-        right_lay.setContentsMargins(0, 0, 0, 0)
-        right_lay.setSpacing(0)
+            # ── тело: боковое меню + рабочая область ──
+            body = QWidget()
+            body.setObjectName("content_area")
+            body_lay = QHBoxLayout(body)
+            body_lay.setContentsMargins(0, 0, 0, 0)
+            body_lay.setSpacing(0)
+            root.addWidget(body, 1)
 
-        # ── шапка раздела: крупный заголовок + пояснение + чип с датой ──
-        topbar = QFrame()
-        topbar.setObjectName("topbar")
-        topbar.setFixedHeight(76)
-        tb_lay = QHBoxLayout(topbar)
-        tb_lay.setContentsMargins(26, 14, 24, 10)
-        tb_lay.setSpacing(16)
+            self.header = Sidebar(tab_names, self._switch_tab)
+            self.header.badge.clicked.connect(self._open_palette)
+            body_lay.addWidget(self.header)
 
-        self._title_box = QWidget()
-        tcol = QVBoxLayout(self._title_box)
-        tcol.setContentsMargins(0, 0, 0, 0)
-        tcol.setSpacing(2)
-        # Заголовок рисуется вручную: по тексту непрерывно течёт светлая волна
-        self.topbar_title = GradientLabel(self.TAB_CLEAN, 16.0)
-        self.topbar_sub = QLabel(self.TAB_SUBTITLES.get(self.TAB_CLEAN, ""))
-        self.topbar_sub.setObjectName("muted")
-        tcol.addWidget(self.topbar_title)
-        tcol.addWidget(self.topbar_sub)
-        tb_lay.addWidget(self._title_box)
-        tb_lay.addStretch()
+            right_col = QWidget()
+            right_col.setObjectName("content_area")
+            right_lay = QVBoxLayout(right_col)
+            right_lay.setContentsMargins(0, 0, 0, 0)
+            right_lay.setSpacing(0)
 
-        # Заголовок раздела мягко «проявляется» при переключении вкладки.
-        self._title_eff = QGraphicsOpacityEffect(self._title_box)
-        self._title_eff.setOpacity(1.0)
-        self._title_box.setGraphicsEffect(self._title_eff)
-        self._title_anim = QPropertyAnimation(self._title_eff, b"opacity", self)
-        self._title_anim.setDuration(260)
-        self._title_anim.setEasingCurve(QEasingCurve.OutCubic)
+            # ── шапка раздела: крупный заголовок + пояснение + чип с датой ──
+            topbar = QFrame()
+            topbar.setObjectName("topbar")
+            topbar.setFixedHeight(76)
+            tb_lay = QHBoxLayout(topbar)
+            tb_lay.setContentsMargins(26, 14, 24, 10)
+            tb_lay.setSpacing(16)
 
-        self.topbar_chip = QLabel(datetime.date.today().strftime("%d.%m.%Y"))
-        self.topbar_chip.setObjectName("chip")
-        tb_lay.addWidget(self.topbar_chip, 0, Qt.AlignVCenter)
+            self._title_box = QWidget()
+            tcol = QVBoxLayout(self._title_box)
+            tcol.setContentsMargins(0, 0, 0, 0)
+            tcol.setSpacing(2)
+            # Заголовок рисуется вручную: по тексту непрерывно течёт светлая волна
+            self.topbar_title = GradientLabel(self.TAB_CLEAN, 16.0)
+            self.topbar_sub = QLabel(self.TAB_SUBTITLES.get(self.TAB_CLEAN, ""))
+            self.topbar_sub.setObjectName("muted")
+            tcol.addWidget(self.topbar_title)
+            tcol.addWidget(self.topbar_sub)
+            tb_lay.addWidget(self._title_box)
+            tb_lay.addStretch()
 
-        right_lay.addWidget(topbar)
+            # Заголовок раздела мягко «проявляется» при переключении вкладки.
+            self._title_eff = QGraphicsOpacityEffect(self._title_box)
+            self._title_eff.setOpacity(1.0)
+            self._title_box.setGraphicsEffect(self._title_eff)
+            self._title_anim = QPropertyAnimation(self._title_eff, b"opacity", self)
+            self._title_anim.setDuration(260)
+            self._title_anim.setEasingCurve(QEasingCurve.OutCubic)
 
-        # Тонкая линия под шапкой: при смене раздела по ней пробегает блик
-        self.sweep = SweepLine()
-        sweep_wrap = QWidget()
-        sw = QHBoxLayout(sweep_wrap)
-        sw.setContentsMargins(24, 0, 24, 0)
-        sw.addWidget(self.sweep)
-        right_lay.addWidget(sweep_wrap)
+            self.topbar_chip = QLabel(datetime.date.today().strftime("%d.%m.%Y"))
+            self.topbar_chip.setObjectName("chip")
+            tb_lay.addWidget(self.topbar_chip, 0, Qt.AlignVCenter)
 
-        self.stack = QStackedWidget()
-        # Анимация fade при переключении вкладок
-        self._tab_opacity_effect = QGraphicsOpacityEffect(self.stack)
-        self._tab_opacity_effect.setOpacity(1.0)
-        self.stack.setGraphicsEffect(self._tab_opacity_effect)
-        self._tab_anim = QPropertyAnimation(self._tab_opacity_effect, b"opacity", self)
-        self._tab_anim.setDuration(220)
-        self._tab_anim.setEasingCurve(QEasingCurve.InOutQuad)
-        self._pending_tab_idx = None
-        self._tab_anim.finished.connect(self._on_tab_anim_finished)
+            right_lay.addWidget(topbar)
 
-        # Карточка-панель вокруг контента.
-        # Важно: НЕ вешаем сюда QGraphicsDropShadowEffect — он оборачивает
-        # self.stack, у которого уже есть свой QGraphicsOpacityEffect для
-        # fade-перехода между вкладками. Вложенные друг в друга графические
-        # эффекты Qt приводят к серьёзным артефактам перерисовки (дублирование
-        # текста, «пропадание» кнопок при наведении) — поэтому оформляем
-        # карточку только через QSS (скруглённые углы, рамка), без эффекта.
-        card = QFrame()
-        card.setObjectName("content_card")
-        card_lay = QVBoxLayout(card)
-        card_lay.setContentsMargins(20, 18, 20, 20)
-        card_lay.addWidget(self.stack)
+            # Тонкая линия под шапкой: при смене раздела по ней пробегает блик
+            self.sweep = SweepLine()
+            sweep_wrap = QWidget()
+            sw = QHBoxLayout(sweep_wrap)
+            sw.setContentsMargins(24, 0, 24, 0)
+            sw.addWidget(self.sweep)
+            right_lay.addWidget(sweep_wrap)
 
-        wrap = QWidget()
-        wl = QVBoxLayout(wrap)
-        wl.setContentsMargins(24, 14, 24, 16)
-        wl.addWidget(card)
-        right_lay.addWidget(wrap, 1)
+            self.stack = QStackedWidget()
+            # Анимация fade при переключении вкладок
+            self._tab_opacity_effect = QGraphicsOpacityEffect(self.stack)
+            self._tab_opacity_effect.setOpacity(1.0)
+            self.stack.setGraphicsEffect(self._tab_opacity_effect)
+            self._tab_anim = QPropertyAnimation(self._tab_opacity_effect, b"opacity", self)
+            self._tab_anim.setDuration(220)
+            self._tab_anim.setEasingCurve(QEasingCurve.InOutQuad)
+            self._pending_tab_idx = None
+            self._tab_anim.finished.connect(self._on_tab_anim_finished)
 
-        body_lay.addWidget(right_col, 1)
+            # Карточка-панель вокруг контента.
+            # Важно: НЕ вешаем сюда QGraphicsDropShadowEffect — он оборачивает
+            # self.stack, у которого уже есть свой QGraphicsOpacityEffect для
+            # fade-перехода между вкладками. Вложенные друг в друга графические
+            # эффекты Qt приводят к серьёзным артефактам перерисовки (дублирование
+            # текста, «пропадание» кнопок при наведении) — поэтому оформляем
+            # карточку только через QSS (скруглённые углы, рамка), без эффекта.
+            card = QFrame()
+            card.setObjectName("content_card")
+            card_lay = QVBoxLayout(card)
+            card_lay.setContentsMargins(20, 18, 20, 20)
+            card_lay.addWidget(self.stack)
 
-        # ── нижняя строка состояния ──
-        status = QFrame()
-        status.setObjectName("statusbar")
-        status.setFixedHeight(30)
-        sl = QHBoxLayout(status)
-        sl.setContentsMargins(20, 0, 6, 0)
-        sl.setSpacing(10)
-        self.status_hint = QLabel("Готово к работе   ·   Ctrl+K — быстрый переход")
-        self.status_hint.setObjectName("muted")
-        sl.addWidget(self.status_hint)
-        sl.addStretch()
-        self.update_btn = QPushButton("  Обновить")
-        self.update_btn.setIcon(_icon("mdi6.update|mdi.update|fa5s.sync-alt", FG2, ""))
-        self.update_btn.setIconSize(QSize(13, 13))
-        self.update_btn.setCursor(Qt.PointingHandCursor)
-        self.update_btn.setToolTip("Проверить обновления на GitHub и установить")
-        self.update_btn.setFixedHeight(22)
-        self._update_btn_style(False)
-        self.update_btn.clicked.connect(lambda: self._check_update(manual=True))
-        sl.addWidget(self.update_btn)
-        ver = QLabel(f"{THEME_LABEL}, {C.APP_VERSION_FULL}" if CONSOLE
-                     else f"VORTEX  ·  {C.APP_VERSION_FULL.upper()}")
-        ver.setObjectName("eyebrow")
-        ver.setToolTip("Версия программы и время сборки")
-        sl.addWidget(ver)
-        if self._frameless and self._resizable:
-            grip = QSizeGrip(status)
-            grip.setFixedSize(16, 16)
-            sl.addWidget(grip, 0, Qt.AlignBottom | Qt.AlignRight)
-        root.addWidget(status)
+            wrap = QWidget()
+            wl = QVBoxLayout(wrap)
+            wl.setContentsMargins(24, 14, 24, 16)
+            wl.addWidget(card)
+            right_lay.addWidget(wrap, 1)
+
+            body_lay.addWidget(right_col, 1)
+
+            # ── нижняя строка состояния ──
+            status = QFrame()
+            status.setObjectName("statusbar")
+            status.setFixedHeight(30)
+            sl = QHBoxLayout(status)
+            sl.setContentsMargins(20, 0, 6, 0)
+            sl.setSpacing(10)
+            self.status_hint = QLabel("Готово к работе   ·   Ctrl+K — быстрый переход")
+            self.status_hint.setObjectName("muted")
+            sl.addWidget(self.status_hint)
+            sl.addStretch()
+            self.update_btn = QPushButton("  Обновить")
+            self.update_btn.setIcon(_icon("mdi6.update|mdi.update|fa5s.sync-alt", FG2, ""))
+            self.update_btn.setIconSize(QSize(13, 13))
+            self.update_btn.setCursor(Qt.PointingHandCursor)
+            self.update_btn.setToolTip("Проверить обновления на GitHub и установить")
+            self.update_btn.setFixedHeight(22)
+            self._update_btn_style(False)
+            self.update_btn.clicked.connect(lambda: self._check_update(manual=True))
+            sl.addWidget(self.update_btn)
+            ver = QLabel(f"VORTEX  ·  {C.APP_VERSION_FULL.upper()}")
+            ver.setObjectName("eyebrow")
+            ver.setToolTip("Версия программы и время сборки")
+            sl.addWidget(ver)
+            if self._frameless and self._resizable:
+                grip = QSizeGrip(status)
+                grip.setFixedSize(16, 16)
+                sl.addWidget(grip, 0, Qt.AlignBottom | Qt.AlignRight)
+            root.addWidget(status)
 
         self._pages = {}
         self._pages[self.TAB_CLEAN] = self._build_clean_tab()
@@ -3832,6 +3580,8 @@ class App(QMainWindow):
         self._pages[self.TAB_EDIT] = self._build_edit_tab()
         self._pages[self.TAB_GEN] = self._build_gen_tab()
         self._pages[self.TAB_DEPOSITS] = self._build_deposits_tab()
+        if STUDIO:
+            self._studio_relayout_pages()
         for nm in tab_names:
             self.stack.addWidget(self._pages[nm])
 
@@ -3955,7 +3705,7 @@ class App(QMainWindow):
         # Fade-out
         self._tab_anim.setStartValue(self._tab_opacity_effect.opacity())
         self._tab_anim.setEndValue(0.0)
-        self._tab_anim.setDuration(90 if CONSOLE else 140)
+        self._tab_anim.setDuration(140)
         self._tab_anim.setEasingCurve(QEasingCurve.OutQuad)
         self._tab_phase = "out"
         self._tab_anim.start()
@@ -3975,9 +3725,11 @@ class App(QMainWindow):
         if self._tab_phase == "out" and self._pending_tab_idx is not None:
             # Переключаем страницу и запускаем fade-in
             self.stack.setCurrentIndex(self._pending_tab_idx)
+            if STUDIO:
+                self._studio_slide_in()
             self._tab_anim.setStartValue(0.0)
             self._tab_anim.setEndValue(1.0)
-            self._tab_anim.setDuration(170 if CONSOLE else 230)
+            self._tab_anim.setDuration(230)
             self._tab_anim.setEasingCurve(QEasingCurve.OutCubic)
             self._tab_phase = "in"
             self._tab_anim.start()
@@ -4313,6 +4065,12 @@ class App(QMainWindow):
         lab.setStyleSheet(f"color:{ACCENT}; font-weight:bold; font-size:10pt;")
         return lab
 
+    def _reg(self, tab, **widgets):
+        """Запоминает виджеты вкладки, у которых нет своего атрибута, — по ним
+        темы «Оникс / Кварц» собирают собственную раскладку вкладки. На работу
+        вкладки и на темы Vortex это никак не влияет."""
+        self.__dict__.setdefault("_ui", {}).setdefault(tab, {}).update(widgets)
+
     def _divider(self):
         line = QFrame()
         line.setFixedHeight(1)
@@ -4462,6 +4220,7 @@ class App(QMainWindow):
         self.progress.setValue(0)
         self.progress.setTextVisible(False)
         lay.addWidget(self.progress)
+        self._reg("clean")
         self._maybe_flip_layout(lay)
         return page
 
@@ -4887,6 +4646,7 @@ class App(QMainWindow):
         prow.addWidget(pull_btn)
         prow.addStretch()
         lay.addLayout(prow)
+        self._reg("city", find=find, spec_find=spec_find, code_btn=code_btn, pull_btn=pull_btn)
         self._maybe_flip_layout(lay)
         return page
 
@@ -5487,6 +5247,9 @@ class App(QMainWindow):
         copy_sc = QShortcut(QKeySequence.Copy, self.edit_table)
         copy_sc.activated.connect(self._copy_edit_numbers)
         lay.addWidget(self.edit_table, 1)
+        self._reg("edit", b_open=b_open, b_merge=b_merge, b_undo=b_undo, b_trig=b_trig,
+                  b_words=b_words, b_macro=b_macro, b_status=b_status, b_calls=b_calls,
+                  b_export=b_export, b_clear=b_clear)
         self._maybe_flip_layout(lay)
         return page
 
@@ -7205,6 +6968,7 @@ class App(QMainWindow):
         self.gen_status.setStyleSheet(f"color:{FG2};")
         self.gen_status.setWordWrap(True)
         lay.addWidget(self.gen_status)
+        self._reg("gen", clean_ranges_btn=clean_ranges_btn, gen_undo_btn=gen_undo_btn)
         self._maybe_flip_layout(lay)
         return page
 
@@ -7347,6 +7111,7 @@ class App(QMainWindow):
         self.dupes_hist.setToolTip("Двойной щелчок — открыть папку с результатом")
         lay.addWidget(self.dupes_hist)
 
+        self._reg("dupes", imp_hist=imp_hist, imp_dir=imp_dir, hist_lbl=hist_lbl)
         self._dupes = {"main": None, "sources": [], "status": None, "loading": False,
                        "last_out": None}
         self._dupes_fill_history()
@@ -7868,6 +7633,8 @@ class App(QMainWindow):
         apply_filter_btn.clicked.connect(self._dep_apply_filter)
         reset_filter_btn.clicked.connect(self._dep_reset_filter)
         save_btn.clicked.connect(self._dep_save)
+        self._reg("deposits", clear_btn=clear_btn, save_btn=save_btn,
+                  apply_filter_btn=apply_filter_btn, reset_filter_btn=reset_filter_btn)
         self._maybe_flip_layout(lay)
         return page
 
@@ -8271,6 +8038,751 @@ class App(QMainWindow):
             self.sigGenBusy.emit(False)
 
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+#           «ОНИКС / КВАРЦ» — КАРКАС ОКНА И РАСКЛАДКА ВКЛАДОК
+#   Всё ниже используется только в темах с design = "studio". Вкладки
+#   строятся обычными построителями (те же виджеты и обработчики), а затем
+#   их виджеты переезжают в новую раскладку из карточек-секций.
+# ══════════════════════════════════════════════════════════════════════════════
+class RailButton(QPushButton):
+    """Кнопка раздела в узкой полосе слева: только иконка, подпись —
+    в подсказке справа. У выбранного раздела иконка окрашена в акцент."""
+
+    def __init__(self, icon_name, text, parent=None, checkable=True):
+        super().__init__(parent)
+        self.setObjectName("rail_btn")
+        self.setCheckable(checkable)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFixedSize(44, 44)
+        self.setToolTip(text)
+        self._ic_off = _icon(icon_name, FG2, None)
+        self._ic_on = _icon(icon_name, ACCENT, None)
+        self._ic_hov = _icon(icon_name, FG, None)
+        if isinstance(self._ic_off, QIcon):
+            self.setIcon(self._ic_off)
+            self.setIconSize(QSize(21, 21))
+        else:
+            self.setText(text[:1])
+        self.toggled.connect(self._sync)
+
+    def _sync(self, *_):
+        if isinstance(self._ic_off, QIcon):
+            self.setIcon(self._ic_on if self.isChecked() else self._ic_off)
+
+    def enterEvent(self, e):
+        if isinstance(self._ic_hov, QIcon) and not self.isChecked():
+            self.setIcon(self._ic_hov)
+        BubbleTip.shared().show_for(self, prefer="right")
+        super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        self._sync()
+        BubbleTip.shared().hide_tip()
+        super().leaveEvent(e)
+
+    def event(self, e):
+        if e.type() == QEvent.ToolTip:
+            return True
+        return super().event(e)
+
+
+class _RailPill(QWidget):
+    """Акцентная полоска у левого края полосы — плавно переезжает к
+    выбранному разделу."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+
+    def paintEvent(self, _e):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(ACCENT))
+        w, h = self.width(), self.height()
+        p.drawRoundedRect(QRectF(-w, 0, w * 2, h), w, w)
+        p.end()
+
+
+class IconRail(QFrame):
+    """Узкая полоса разделов слева (замена бокового меню в «Ониксе / Кварце»).
+    Повторяет API Sidebar: badge, tab_buttons, tab_group, select()."""
+
+    _ICONS = {
+        "Очистка": "broom", "Дубли": "copy", "Города": "map",
+        "Редактирование": "edit", "Генерация": "bolt", "Вклады": "piggy",
+    }
+
+    def __init__(self, tab_names, on_tab, win, parent=None):
+        super().__init__(parent)
+        self.setObjectName("rail")
+        self.setFixedWidth(STYLE.get("sidebar_w", 68))
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 16, 12, 14)
+        lay.setSpacing(6)
+
+        self.badge = _DbBadge(size=38)
+        self.badge.setToolTip("Быстрый переход  ·  Ctrl+K")
+        lay.addWidget(self.badge, 0, Qt.AlignHCenter)
+        lay.addSpacing(18)
+
+        self.tab_buttons = {}
+        self.tab_group = QButtonGroup(self)
+        self.tab_group.setExclusive(True)
+        for nm in tab_names:
+            b = RailButton(ICONS.get(self._ICONS.get(nm, "list"), ICONS["list"]), nm)
+            b.clicked.connect(lambda _=False, n=nm: on_tab(n))
+            self.tab_group.addButton(b)
+            self.tab_buttons[nm] = b
+            lay.addWidget(b, 0, Qt.AlignHCenter)
+
+        lay.addStretch()
+        self.btn_search = RailButton(ICONS["search"], "Быстрый переход  ·  Ctrl+K", checkable=False)
+        self.btn_search.clicked.connect(win._open_palette)
+        self.btn_theme = RailButton(ICONS["palette"], "Оформление", checkable=False)
+        self.btn_theme.clicked.connect(win._switch_theme)
+        self.btn_about = RailButton(ICONS["info"], "О программе", checkable=False)
+        self.btn_about.clicked.connect(win._open_about)
+        for b in (self.btn_search, self.btn_theme, self.btn_about):
+            lay.addWidget(b, 0, Qt.AlignHCenter)
+
+        self._pill = _RailPill(self)
+        self._pill.hide()
+        self._pill_anim = None
+        if tab_names:
+            first = self.tab_buttons[tab_names[0]]
+            first.setChecked(True)
+            QTimer.singleShot(0, lambda: self._move_pill(first, animate=False))
+
+    def _move_pill(self, btn, animate=True):
+        h = 20
+        target = QRect(0, btn.y() + (btn.height() - h) // 2, 3, h)
+        if not self._pill.isVisible() or not animate:
+            self._pill.setGeometry(target)
+            self._pill.show()
+            self._pill.raise_()
+            return
+        a = QPropertyAnimation(self._pill, b"geometry", self)
+        a.setDuration(240)
+        a.setEasingCurve(QEasingCurve.OutCubic)
+        a.setStartValue(self._pill.geometry())
+        a.setEndValue(target)
+        a.start()
+        self._pill_anim = a
+
+    def select(self, name):
+        btn = self.tab_buttons.get(name)
+        if btn is None:
+            return
+        btn.setChecked(True)
+        self._move_pill(btn)
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        b = self.tab_group.checkedButton()
+        if b is not None:
+            QTimer.singleShot(0, lambda b=b: self._move_pill(b, animate=False))
+
+
+class StudioHeader(TitleBar):
+    """Шапка «Оникса / Кварца»: заголовок раздела, состояние, кнопка
+    обновления и кнопки окна. За неё окно перетаскивается — поведение
+    унаследовано от TitleBar."""
+
+    def __init__(self, win, title_box, extras, parent=None):
+        QFrame.__init__(self, parent)
+        self.setObjectName("s_header")
+        self._win = win
+        self._drag_pos = None
+        self._resizable = bool(STYLE.get("resizable", True))
+        self.setFixedHeight(84)
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(32, 18, 10, 6)
+        lay.setSpacing(12)
+        lay.addWidget(title_box, 1, Qt.AlignVCenter)
+        for w in extras:
+            lay.addWidget(w, 0, Qt.AlignVCenter)
+        lay.addSpacing(10)
+
+        win_box = QWidget()
+        wl = QHBoxLayout(win_box)
+        wl.setContentsMargins(0, 0, 0, 0)
+        wl.setSpacing(2)
+        self.btn_theme = None
+        self.btn_full = self._win_btn(ICONS["fullscreen"], "⛶", "Полноэкранный режим  ·  F11")
+        self.btn_full.clicked.connect(self._win.toggle_fullscreen)
+        self.btn_min = self._win_btn(ICONS["win_min"], "—", "Свернуть")
+        self.btn_min.clicked.connect(self._win.showMinimized)
+        self.btn_max = self._win_btn(ICONS["win_max"], "□", "Развернуть")
+        self.btn_max.clicked.connect(self.toggle_max)
+        self.btn_close = self._win_btn(ICONS["win_close"], "✕", "Закрыть", close=True)
+        self.btn_close.clicked.connect(self._win.close)
+        for b in (self.btn_full, self.btn_min, self.btn_max, self.btn_close):
+            wl.addWidget(b)
+        lay.addWidget(win_box, 0, Qt.AlignTop)
+
+
+def _s_card(title=None, hint=None, right=(), step=None, margins=(18, 16, 18, 18), spacing=10):
+    """Карточка-секция: заголовок (+ номер шага, подсказка, виджеты справа)
+    и тело. Возвращает (рамка, раскладка тела)."""
+    card = QFrame()
+    card.setObjectName("s_card")
+    v = QVBoxLayout(card)
+    v.setContentsMargins(*margins)
+    v.setSpacing(spacing)
+    if title or right:
+        head = QHBoxLayout()
+        head.setSpacing(10)
+        if step is not None:
+            st = QLabel(str(step))
+            st.setObjectName("s_step")
+            head.addWidget(st, 0, Qt.AlignVCenter)
+        tcol = QVBoxLayout()
+        tcol.setSpacing(1)
+        if title:
+            t = QLabel(title)
+            t.setObjectName("s_title")
+            tcol.addWidget(t)
+        if hint:
+            h = QLabel(hint)
+            h.setObjectName("s_hint")
+            h.setWordWrap(True)
+            tcol.addWidget(h)
+        head.addLayout(tcol, 1)
+        for w in right:
+            head.addWidget(w, 0, Qt.AlignVCenter)
+        v.addLayout(head)
+    return card, v
+
+
+def _s_caption(text):
+    lbl = QLabel(text)
+    lbl.setObjectName("s_caption")
+    return lbl
+
+
+def _s_vline():
+    f = QFrame()
+    f.setObjectName("s_vline")
+    f.setFixedWidth(1)
+    return f
+
+
+def _s_hline():
+    f = QFrame()
+    f.setObjectName("s_hline")
+    f.setFixedHeight(1)
+    return f
+
+
+def _s_page():
+    page = QWidget()
+    lay = QVBoxLayout(page)
+    lay.setContentsMargins(0, 0, 0, 0)
+    lay.setSpacing(16)
+    return page, lay
+
+
+def _s_reset(*widgets):
+    """Снимает inline-стили, подогнанные под Vortex, — дальше действует QSS темы."""
+    for w in widgets:
+        try:
+            w.setStyleSheet("")
+        except RuntimeError:
+            pass
+
+
+def _s_autohide(label, hide_if=lambda t: not t):
+    """Подпись сама прячется, когда ей нечего показать (пустой счётчик,
+    «Готово к работе» в шапке), и появляется, когда текст снова есть."""
+    orig = label.setText
+
+    def _set(text, _orig=orig, _lbl=label):
+        _orig(text)
+        try:
+            _lbl.setVisible(not hide_if(str(text).strip()))
+        except RuntimeError:
+            pass
+
+    label.setText = _set
+    label.setVisible(not hide_if(label.text().strip()))
+
+
+class _NoSweep:
+    """Заглушка линии-блика под заголовком: в «Ониксе / Кварце» её нет."""
+
+    def sweep(self):
+        pass
+
+
+def _studio_build_shell(self, root, tab_names):
+    body = QWidget()
+    body.setObjectName("content_area")
+    bl = QHBoxLayout(body)
+    bl.setContentsMargins(0, 0, 0, 0)
+    bl.setSpacing(0)
+    root.addWidget(body, 1)
+
+    self.header = IconRail(tab_names, self._switch_tab, self)
+    self.header.badge.clicked.connect(self._open_palette)
+    bl.addWidget(self.header)
+
+    main = QWidget()
+    main.setObjectName("content_area")
+    ml = QVBoxLayout(main)
+    ml.setContentsMargins(0, 0, 0, 0)
+    ml.setSpacing(0)
+
+    # заголовок раздела (те же атрибуты, что у Vortex: их меняет _set_topbar)
+    self._title_box = QWidget()
+    tcol = QVBoxLayout(self._title_box)
+    tcol.setContentsMargins(0, 0, 0, 0)
+    tcol.setSpacing(2)
+    self.topbar_title = GradientLabel(self.TAB_CLEAN, 16.0)
+    self.topbar_sub = QLabel(self.TAB_SUBTITLES.get(self.TAB_CLEAN, ""))
+    self.topbar_sub.setObjectName("muted")
+    tcol.addWidget(self.topbar_title)
+    tcol.addWidget(self.topbar_sub)
+    self._title_eff = QGraphicsOpacityEffect(self._title_box)
+    self._title_eff.setOpacity(1.0)
+    self._title_box.setGraphicsEffect(self._title_eff)
+    self._title_anim = QPropertyAnimation(self._title_eff, b"opacity", self)
+    self._title_anim.setDuration(260)
+    self._title_anim.setEasingCurve(QEasingCurve.OutCubic)
+
+    self.status_hint = QLabel("Готово к работе   ·   Ctrl+K — быстрый переход")
+    self.status_hint.setObjectName("muted")
+    self.update_btn = QPushButton("  Обновить")
+    self.update_btn.setIcon(_icon(ICONS.get("update", "mdi6.update|mdi.update"), FG2, ""))
+    self.update_btn.setIconSize(QSize(14, 14))
+    self.update_btn.setCursor(Qt.PointingHandCursor)
+    self.update_btn.setToolTip("Проверить обновления на GitHub и установить")
+    self.update_btn.setFixedHeight(28)
+    self._update_btn_style(False)
+    self.update_btn.clicked.connect(lambda: self._check_update(manual=True))
+    self.topbar_chip = QLabel(datetime.date.today().strftime("%d.%m.%Y"))
+    self.topbar_chip.setObjectName("chip")
+
+    _s_autohide(self.status_hint, lambda t: not t or t.startswith("Готово к работе"))
+    self.titlebar = StudioHeader(self, self._title_box,
+                                 [self.status_hint, self.update_btn, self.topbar_chip])
+    ml.addWidget(self.titlebar)
+    self.sweep = _NoSweep()
+
+    self.stack = QStackedWidget()
+    self._tab_opacity_effect = QGraphicsOpacityEffect(self.stack)
+    self._tab_opacity_effect.setOpacity(1.0)
+    self.stack.setGraphicsEffect(self._tab_opacity_effect)
+    self._tab_anim = QPropertyAnimation(self._tab_opacity_effect, b"opacity", self)
+    self._tab_anim.setDuration(160)
+    self._tab_anim.setEasingCurve(QEasingCurve.InOutQuad)
+    self._pending_tab_idx = None
+    self._tab_anim.finished.connect(self._on_tab_anim_finished)
+
+    wrap = QWidget()
+    wl = QVBoxLayout(wrap)
+    wl.setContentsMargins(32, 6, 28, 24)
+    wl.addWidget(self.stack)
+    ml.addWidget(wrap, 1)
+    bl.addWidget(main, 1)
+
+
+def _studio_slide_in(self):
+    """Новая вкладка чуть въезжает снизу вместе с проявлением."""
+    page = self.stack.currentWidget()
+    if page is None:
+        return
+    end = page.pos()
+    a = QPropertyAnimation(page, b"pos", self)
+    a.setDuration(240)
+    a.setEasingCurve(QEasingCurve.OutCubic)
+    a.setStartValue(end + QPoint(0, 14))
+    a.setEndValue(end)
+    a.start()
+    self._slide_anim = a
+
+
+# ──────────────────────────  РАСКЛАДКА ВКЛАДОК  ──────────────────────────
+def _studio_page_clean(self, old):
+    ui = self._ui.get("clean", {})
+    page, lay = _s_page()
+    cols = QHBoxLayout()
+    cols.setSpacing(16)
+    left = QVBoxLayout()
+    left.setSpacing(16)
+
+    src, sv = _s_card("Источники", "Откуда брать номера и куда сложить готовые файлы")
+    for cap, row in (("Прозвоненные", self.called_row), ("База для очистки", self.uncalled_row),
+                     ("Результат — создаётся автоматически", self.ready_row)):
+        sv.addWidget(_s_caption(cap))
+        sv.addWidget(row)
+    sv.addSpacing(4)
+    sv.addWidget(self.pf)
+    left.addWidget(src)
+
+    cut, cv = _s_card("Нарезка", "Дубли удаляются, остаток режется на файлы")
+    r = QHBoxLayout()
+    r.addWidget(_s_caption("Номеров в одном файле"))
+    r.addStretch()
+    r.addWidget(self.chunk_seg)
+    cv.addLayout(r)
+    cv.addWidget(self.shuffle_cb)
+    cv.addSpacing(4)
+    self.clean_btn.setMinimumHeight(42)
+    cv.addWidget(self.clean_btn)
+    left.addWidget(cut)
+    left.addStretch()
+
+    log, lv = _s_card("Журнал", "Что сделано при последней очистке")
+    _s_reset(self.log)
+    lv.addWidget(self.log, 1)
+    lv.addWidget(self.progress)
+
+    lw = QWidget()
+    lw.setLayout(left)
+    lw.setFixedWidth(470)
+    cols.addWidget(lw)
+    cols.addWidget(log, 1)
+    lay.addLayout(cols, 1)
+    return page
+
+
+def _studio_page_dupes(self, old):
+    ui = self._ui.get("dupes", {})
+    page, lay = _s_page()
+    page.setAcceptDrops(True)
+    page.dragEnterEvent = self._dupes_drag_enter
+    page.dropEvent = self._dupes_drop
+
+    top = QHBoxLayout()
+    top.setSpacing(16)
+    left = QVBoxLayout()
+    left.setSpacing(12)
+
+    c1, v1 = _s_card("Файл для чистки", "Excel или CSV, номера в первом столбце", step=1)
+    r1 = QHBoxLayout()
+    r1.addWidget(self.dupes_main_btn)
+    _s_reset(self.dupes_main_label)
+    self.dupes_main_label.setObjectName("muted")
+    r1.addWidget(self.dupes_main_label, 1)
+    v1.addLayout(r1)
+    left.addWidget(c1)
+
+    c2, v2 = _s_card("Выгрузки со статусами", "Файлы, папка или ZIP-архив — можно несколько", step=2)
+    r2 = QHBoxLayout()
+    r2.addWidget(self.dupes_src_btn)
+    r2.addWidget(self.dupes_src_dir_btn)
+    _s_reset(self.dupes_src_label)
+    self.dupes_src_label.setObjectName("muted")
+    r2.addWidget(self.dupes_src_label, 1)
+    v2.addLayout(r2)
+    left.addWidget(c2)
+
+    c3, v3 = _s_card("Чистка", step=3)
+    self.dupes_run_btn.setObjectName("accent")
+    self.dupes_run_btn.setText("  Убрать дубли…")
+    self.dupes_run_btn.setMinimumHeight(40)
+    self.dupes_open_btn.setMinimumHeight(40)
+    r3 = QHBoxLayout()
+    r3.addWidget(self.dupes_run_btn, 1)
+    r3.addWidget(self.dupes_open_btn)
+    v3.addLayout(r3)
+    _s_reset(self.dupes_status)
+    self.dupes_status.setObjectName("muted")
+    self.dupes_status.setText("")          # порядок шагов и так виден по номерам карточек
+    _s_autohide(self.dupes_status)
+    v3.addWidget(self.dupes_status)
+    left.addWidget(c3)
+    left.addStretch()
+
+    rep, rv = _s_card("Отчёт", "Сколько удалено и куда сохранено")
+    _s_reset(self.dupes_log)
+    rv.addWidget(self.dupes_log, 1)
+
+    lw = QWidget()
+    lw.setLayout(left)
+    lw.setFixedWidth(460)
+    top.addWidget(lw)
+    top.addWidget(rep, 1)
+    lay.addLayout(top, 1)
+
+    imp, imp_dir = ui.get("imp_hist"), ui.get("imp_dir")
+    right = [w for w in (imp, imp_dir) if w is not None]
+    if imp is not None:
+        imp.setText("  Добавить файлы")
+    hist, hv = _s_card("История", "Обработанные файлы — двойной щелчок открывает папку", right=right)
+    self.dupes_hist.setMaximumHeight(16777215)
+    hv.addWidget(self.dupes_hist, 1)
+    hist.setFixedHeight(230)
+    lay.addWidget(hist)
+    return page
+
+
+def _studio_page_city(self, old):
+    ui = self._ui.get("city", {})
+    page, lay = _s_page()
+    cols = QHBoxLayout()
+    cols.setSpacing(16)
+    main = QVBoxLayout()
+    main.setSpacing(16)
+
+    srch, sv = _s_card("Поиск городов", "По областному центру и радиусу или по специализации")
+    r1 = QHBoxLayout()
+    self.city_edit.setPlaceholderText("Областной центр, например: Ростов-на-Дону")
+    r1.addWidget(self.city_edit, 1)
+    r1.addWidget(ui["find"])
+    sv.addLayout(r1)
+    r2 = QHBoxLayout()
+    r2.addWidget(_s_caption("Радиус"))
+    r2.addWidget(self.radius_seg)
+    r2.addStretch()
+    sv.addLayout(r2)
+    r3 = QHBoxLayout()
+    r3.addWidget(self.spec_edit, 1)
+    r3.addWidget(ui["spec_find"])
+    sv.addLayout(r3)
+    _s_reset(self.city_status)
+    self.city_status.setObjectName("muted")
+    sv.addWidget(self.city_status)
+    main.addWidget(srch)
+
+    _s_reset(self.city_count)
+    self.city_count.setObjectName("chip")
+    _s_autohide(self.city_count)
+    res, rv = _s_card("Города", "Двойной щелчок — диапазоны номеров, правый — меню", right=[self.city_count])
+    rv.addWidget(self.city_table, 1)
+    main.addWidget(res, 1)
+
+    side = QVBoxLayout()
+    side.setSpacing(16)
+    code, cv = _s_card("Код города", "Формат: 7 + код")
+    self.code_edit.setFixedWidth(16777215)
+    self.code_edit.setMinimumWidth(0)
+    cv.addWidget(self.code_edit)
+    r = QHBoxLayout()
+    r.addWidget(ui["code_btn"])
+    self.code_result.setFixedWidth(16777215)
+    self.code_result.setMinimumWidth(0)
+    r.addWidget(self.code_result, 1)
+    cv.addLayout(r)
+    side.addWidget(code)
+    pull, pv = _s_card("Коды из папки", "Вытащить коды всех городов из файлов в папке")
+    pull_btn = ui["pull_btn"]
+    pull_btn.setIcon(_icon(ICONS["folder"], ON_ACCENT, ""))
+    pv.addWidget(pull_btn)
+    side.addWidget(pull)
+    side.addStretch()
+
+    mw = QWidget()
+    mw.setLayout(main)
+    sw = QWidget()
+    sw.setLayout(side)
+    sw.setFixedWidth(300)
+    cols.addWidget(mw, 1)
+    cols.addWidget(sw)
+    lay.addLayout(cols, 1)
+    return page
+
+
+def _studio_page_edit(self, old):
+    ui = self._ui.get("edit", {})
+    page, lay = _s_page()
+    page.setAcceptDrops(True)
+    page.dragEnterEvent = self._edit_drag_enter
+    page.dropEvent = self._edit_drop
+
+    cols = QHBoxLayout()
+    cols.setSpacing(16)
+
+    _s_reset(self.edit_count)
+    self.edit_count.setObjectName("chip")
+    _s_autohide(self.edit_count)
+    tbl, tv = _s_card("Номера", "Перетащи файл в окно или открой его кнопкой справа",
+                      right=[self.edit_count])
+    _s_reset(self.edit_status)
+    self.edit_status.setObjectName("muted")
+    tv.addWidget(self.edit_status)
+    tv.addWidget(self.edit_city_box)
+    tv.addWidget(self.edit_table, 1)
+    cols.addWidget(tbl, 1)
+
+    # инструменты — вертикальной колонкой справа, группами
+    tools, tl = _s_card(None, margins=(10, 12, 10, 12), spacing=6)
+    tools.setFixedWidth(60)
+    groups = (("b_open", "b_merge", "b_undo"),
+              ("b_trig", "b_words", "b_macro"),
+              ("b_status", "b_calls"),
+              ("b_export", "b_clear"))
+    for gi, grp in enumerate(groups):
+        if gi:
+            tl.addSpacing(2)
+            tl.addWidget(_s_hline())
+            tl.addSpacing(2)
+        for key in grp:
+            b = ui.get(key)
+            if b is None:
+                continue
+            b._tip_side = "right"
+            b.setFixedSize(38, 38)
+            tl.addWidget(b, 0, Qt.AlignHCenter)
+    tl.addStretch()
+    cols.addWidget(tools)
+    lay.addLayout(cols, 1)
+    return page
+
+
+def _studio_page_gen(self, old):
+    ui = self._ui.get("gen", {})
+    page, lay = _s_page()
+    cols = QHBoxLayout()
+    cols.setSpacing(16)
+
+    par, pv = _s_card("Параметры", "Город попадёт в имя файлов")
+    pv.addWidget(_s_caption("Город"))
+    pv.addWidget(self.gen_city)
+    pv.addWidget(_s_caption("Номеров в одном файле"))
+    self.gen_chunk.setFixedWidth(16777215)
+    self.gen_chunk.setMinimumWidth(0)
+    pv.addWidget(self.gen_chunk)
+    pv.addSpacing(6)
+    # «Сгенерировать» — полноразмерная кнопка вместо квадратной иконки
+    self.gen_btn.setMinimumSize(0, 42)
+    self.gen_btn.setMaximumSize(16777215, 42)
+    self.gen_btn.setObjectName("accent")
+    self.gen_btn.setIcon(_icon(ICONS["bolt"], ON_ACCENT, ""))
+    self.gen_btn.setText("  Сгенерировать")
+    pv.addWidget(self.gen_btn)
+    r = QHBoxLayout()
+    for key, txt in (("clean_ranges_btn", "  Очистить"), ("gen_undo_btn", "  Вернуть")):
+        b = ui.get(key)
+        if b is None:
+            continue
+        b.setMinimumSize(0, 34)
+        b.setMaximumSize(16777215, 34)
+        b.setText(txt)
+        b.setIconSize(QSize(16, 16))
+        r.addWidget(b, 1)
+    pv.addLayout(r)
+    pv.addSpacing(6)
+    pv.addWidget(self.gen_progress)
+    _s_reset(self.gen_status)
+    self.gen_status.setObjectName("muted")
+    pv.addWidget(self.gen_status)
+    pv.addStretch()
+    par.setFixedWidth(340)
+    cols.addWidget(par)
+
+    rng, rv = _s_card("Диапазоны номеров", "По одному в строке: НАЧАЛО-КОНЕЦ")
+    self.gen_ranges.setStyleSheet(
+        f"font-family:'{STYLE.get('font_mono', 'Consolas')}', 'Consolas'; font-size:12pt;")
+    rv.addWidget(self.gen_ranges, 1)
+    cols.addWidget(rng, 1)
+    lay.addLayout(cols, 1)
+    return page
+
+
+def _studio_page_deposits(self, old):
+    ui = self._ui.get("deposits", {})
+    page, lay = _s_page()
+    top = QHBoxLayout()
+    top.setSpacing(16)
+
+    fl, fv = _s_card("Файлы", "Города подтянутся сами, как только загружены оба файла")
+    for btn, lbl, cap in ((self.dep_f1_btn, self.dep_f1_label, "ФИО, даты, доходы и вклады"),
+                          (self.dep_f2_btn, self.dep_f2_label, "Города: ФИО, дата, адрес")):
+        r = QHBoxLayout()
+        r.addWidget(btn)
+        col = QVBoxLayout()
+        col.setSpacing(0)
+        col.addWidget(_s_caption(cap))
+        _s_reset(lbl)
+        lbl.setObjectName("muted")
+        col.addWidget(lbl)
+        r.addLayout(col, 1)
+        fv.addLayout(r)
+    ar = QHBoxLayout()
+    for key in ("save_btn", "clear_btn"):
+        b = ui.get(key)
+        if b is not None:
+            ar.addWidget(b)
+    ar.addStretch()
+    fv.addLayout(ar)
+    _s_reset(self.dep_status)
+    self.dep_status.setObjectName("muted")
+    fv.addWidget(self.dep_status)
+    top.addWidget(fl, 1)
+
+    ft, tv = _s_card("Фильтр", "Город и диапазон по выбранному столбцу")
+    g = QGridLayout()
+    g.setHorizontalSpacing(10)
+    g.setVerticalSpacing(8)
+    g.addWidget(_s_caption("Город"), 0, 0)
+    g.addWidget(self.dep_city_filter, 0, 1, 1, 3)
+    g.addWidget(_s_caption("Столбец"), 1, 0)
+    g.addWidget(self.dep_num_col, 1, 1, 1, 3)
+    g.addWidget(_s_caption("от"), 2, 0)
+    self.dep_min_edit.setFixedWidth(16777215)
+    self.dep_max_edit.setFixedWidth(16777215)
+    self.dep_min_edit.setMinimumWidth(0)
+    self.dep_max_edit.setMinimumWidth(0)
+    g.addWidget(self.dep_min_edit, 2, 1)
+    g.addWidget(_s_caption("до"), 2, 2)
+    g.addWidget(self.dep_max_edit, 2, 3)
+    g.setColumnStretch(1, 1)
+    g.setColumnStretch(3, 1)
+    tv.addLayout(g)
+    br = QHBoxLayout()
+    br.addStretch()
+    for key in ("reset_filter_btn", "apply_filter_btn"):
+        b = ui.get(key)
+        if b is not None:
+            br.addWidget(b)
+    ab = ui.get("apply_filter_btn")
+    if ab is not None:
+        ab.setObjectName("accent")
+    tv.addLayout(br)
+    ft.setFixedWidth(430)
+    top.addWidget(ft)
+    lay.addLayout(top)
+
+    res, rv = _s_card("Результат сверки")
+    _s_reset(self.dep_table)
+    rv.addWidget(self.dep_table, 1)
+    lay.addWidget(res, 1)
+    return page
+
+
+_STUDIO_PAGES = {
+    "Очистка": _studio_page_clean, "Дубли": _studio_page_dupes, "Города": _studio_page_city,
+    "Редактирование": _studio_page_edit, "Генерация": _studio_page_gen, "Вклады": _studio_page_deposits,
+}
+
+
+def _studio_relayout_pages(self):
+    """Переносит виджеты каждой вкладки в раскладку «Оникса / Кварца».
+    Если с какой-то вкладкой что-то пойдёт не так, она остаётся в
+    исходной раскладке — программа при этом работает как обычно."""
+    for name, old in list(self._pages.items()):
+        fn = _STUDIO_PAGES.get(name)
+        if fn is None:
+            continue
+        try:
+            new = fn(self, old)
+        except Exception as e:  # pragma: no cover — запасной путь
+            print(f"[studio] вкладка «{name}» оставлена в исходной раскладке: {e}", file=sys.stderr)
+            continue
+        self._pages[name] = new
+        old.hide()
+        old.deleteLater()
+
+
+App._build_studio_shell = _studio_build_shell
+App._studio_slide_in = _studio_slide_in
+App._studio_relayout_pages = _studio_relayout_pages
+
+
 def _make_app_icon():
     """Иконка приложения (окно/панель задач): тёмная плитка с янтарным
     знаком-«воронкой» — тот же знак, что и в боковой панели. Рисуется
@@ -8410,7 +8922,7 @@ class ShimmerFilter(QObject):
     }
 
     def eventFilter(self, obj, event):
-        if CONSOLE:
+        if STUDIO:
             return False
         if not isinstance(obj, QAbstractButton) or obj.objectName() not in ("accent", "green"):
             return False
