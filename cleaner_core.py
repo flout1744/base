@@ -38,15 +38,16 @@ THEME_FILE = os.path.join(_app_dir(), "theme.json")
 # Правило простое: любое изменение в программе — новая строка версии.
 # Мелкая правка/починка → +0.1, крупная переделка → следующее целое число.
 # APP_BUILD — время и дата сборки, показывается в окне «о программе».
-APP_VERSION = "3.3"
-APP_BUILD = "16:30 01.11.2026"
+APP_VERSION = "3.4"
+APP_BUILD = "10:45 17.11.2026"
 APP_VERSION_FULL = f"версия {APP_VERSION} от {APP_BUILD}"
 
 # Короткий список того, что изменилось в этой версии (окно «о программе»).
 APP_CHANGES = (
-    "база расширена: +17 000 сёл, посёлков, ПГТ, станиц и хуторов (от 500 жителей)",
-    "у новых пунктов — телефонный код и диапазоны их района по свежему реестру Минцифры",
-    "в столбце специализации у новых пунктов показан тип: село, ПГТ, станица…",
+    "новая вкладка «Дубли»: из файла убираются номера, у которых уже есть статус в выгрузках обзвона",
+    "выгрузки со статусами можно грузить файлами, папкой или ZIP-архивом; перед чисткой окно с галочками: какие статусы удалить, какие оставить — сразу видно, сколько номеров останется; название готового файла вписываешь сам",
+    "готовый файл сразу ложится на Рабочий стол в папку «дубли ДД.ММ.ГГГГ» с тем же названием",
+    "программа помнит обработанные файлы и предупреждает, если файл (или почти такой же) уже был в работе; старые файлы можно добавить в историю вручную",
 )
 
 # ─────────────────────────────  ОФОРМЛЕНИЕ: VORTEX  ─────────────────────────────
@@ -2214,3 +2215,424 @@ def get_cached_orgs_phones(city):
     return set(entry.get("phones", []))
 
 
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  ВКЛАДКА «ДУБЛИ»
+#  Берём один файл с номерами (например «Ейск 23.03 270.xlsx») и выкидываем
+#  из него номера, у которых уже стоит статус в выгрузках обзвона
+#  (CSV/XLSX с колонками phone_number + status, можно папкой или ZIP-архивом).
+#  Номера без статуса (ещё не обработанные) дублями НЕ считаются.
+#  Кеш (dupes_cache.json) помнит, какие файлы уже чистили, чтобы предупредить.
+# ═══════════════════════════════════════════════════════════════════════════
+
+import csv as _csv
+import io as _io
+import zipfile as _zipfile
+import hashlib as _hashlib
+
+DUPES_CACHE_FILE = os.path.join(_app_dir(), "dupes_cache.json")
+DUPES_CACHE_LIMIT = 1000          # сколько последних обработанных файлов помнить
+DUPES_TABLE_EXT = (".csv", ".xlsx", ".xlsm", ".xls")
+
+_PHONE_HEADERS = {"phone_number", "phone", "телефон", "номер", "номер телефона", "tel", "number"}
+_STATUS_HEADERS = {"status", "статус"}
+
+
+def dupes_norm_phone(v):
+    """Приводит номер к виду 7XXXXXXXXXX. 8XXXXXXXXXX и 10-значные — тоже.
+    Возвращает None, если это не номер."""
+    if v is None:
+        return None
+    if isinstance(v, float):
+        if v != v:          # NaN
+            return None
+        v = int(v)
+    s = str(v).strip()
+    if s.endswith(".0"):
+        s = s[:-2]
+    d = "".join(ch for ch in s if ch.isdigit())
+    if len(d) == 10:
+        d = "7" + d
+    elif len(d) == 11 and d[0] == "8":
+        d = "7" + d[1:]
+    if len(d) == 11 and d[0] == "7":
+        return d
+    return None
+
+
+def _zip_member_name(info):
+    """Имя файла внутри ZIP. Архивы из Windows часто хранят имена в cp866."""
+    name = info.filename
+    if not (info.flag_bits & 0x800):
+        try:
+            name = name.encode("cp437").decode("cp866")
+        except Exception:
+            pass
+    return name
+
+
+def _decode_text(data):
+    for enc in ("utf-8-sig", "cp1251"):
+        try:
+            return data.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", "replace")
+
+
+def _rows_from_bytes(name, data):
+    """Строки таблицы (list[list]) из CSV/XLSX/XLS, переданного байтами."""
+    low = name.lower()
+    if low.endswith(".csv"):
+        text = _decode_text(data)
+        sample = text[:4096]
+        try:
+            dialect = _csv.Sniffer().sniff(sample, delimiters=",;\t")
+        except Exception:
+            dialect = _csv.excel
+        return [row for row in _csv.reader(_io.StringIO(text), dialect)]
+    if low.endswith((".xlsx", ".xlsm")):
+        import openpyxl
+        wb = openpyxl.load_workbook(_io.BytesIO(data), read_only=True, data_only=True)
+        try:
+            ws = wb.worksheets[0]
+            return [list(r) for r in ws.iter_rows(values_only=True)]
+        finally:
+            wb.close()
+    if low.endswith(".xls"):
+        df = pd.read_excel(_io.BytesIO(data), header=None, dtype=object)
+        return df.where(df.notna(), None).values.tolist()
+    raise ValueError("неподдерживаемый формат")
+
+
+def _find_columns(rows):
+    """(индекс_номера, индекс_статуса|None, есть_заголовок)."""
+    if rows:
+        head = [str(c).strip().lower() if c is not None else "" for c in rows[0]]
+        ph = next((i for i, h in enumerate(head) if h in _PHONE_HEADERS), None)
+        if ph is not None:
+            st = next((i for i, h in enumerate(head) if h in _STATUS_HEADERS), None)
+            return ph, st, True
+    return 0, None, False
+
+
+def _iter_source_files(paths):
+    """Разворачивает список путей (файлы, папки, ZIP) в (имя, байты)."""
+    def from_zip(zname, zdata, depth=0):
+        try:
+            z = _zipfile.ZipFile(_io.BytesIO(zdata))
+        except Exception:
+            yield zname, None
+            return
+        for info in z.infolist():
+            if info.is_dir():
+                continue
+            member = _zip_member_name(info)
+            low = member.lower()
+            label = f"{os.path.basename(zname)} › {member}"
+            if low.endswith(".zip") and depth < 2:
+                yield from from_zip(label, z.read(info), depth + 1)
+            elif low.endswith(DUPES_TABLE_EXT):
+                yield label, z.read(info)
+
+    for p in paths:
+        if os.path.isdir(p):
+            for root, _dirs, files in os.walk(p):
+                for f in sorted(files):
+                    full = os.path.join(root, f)
+                    low = f.lower()
+                    if f.startswith("~$"):
+                        continue
+                    if low.endswith(".zip") or low.endswith(DUPES_TABLE_EXT):
+                        yield from _iter_source_files([full])
+        elif os.path.isfile(p):
+            with open(p, "rb") as fh:
+                data = fh.read()
+            if p.lower().endswith(".zip"):
+                yield from from_zip(p, data)
+            else:
+                yield os.path.basename(p), data
+
+
+def dupes_load_status_sources(paths):
+    """Собирает номера со статусами из файлов/папок/архивов.
+
+    Возвращает dict:
+      phones  — {номер: set(статусов)} (только непустые статусы)
+      status_counts — {статус: сколько разных номеров}
+      files   — [(имя, номеров_со_статусом)]
+      skipped — [(имя, причина)]
+    """
+    phones, files, skipped = {}, [], []
+    for name, data in _iter_source_files(paths):
+        if data is None:
+            skipped.append((name, "не удалось открыть архив"))
+            continue
+        try:
+            rows = _rows_from_bytes(name, data)
+        except Exception as e:
+            skipped.append((name, f"не читается ({e})"))
+            continue
+        ph, st, has_head = _find_columns(rows)
+        if st is None:
+            skipped.append((name, "нет столбца со статусом"))
+            continue
+        n = 0
+        for row in rows[1 if has_head else 0:]:
+            if ph >= len(row) or st >= len(row):
+                continue
+            status = str(row[st] or "").strip()
+            if not status:
+                continue
+            num = dupes_norm_phone(row[ph])
+            if not num:
+                continue
+            phones.setdefault(num, set()).add(status)
+            n += 1
+        files.append((name, n))
+    counts = {}
+    for sts in phones.values():
+        for s in sts:
+            counts[s] = counts.get(s, 0) + 1
+    return {"phones": phones, "status_counts": counts, "files": files, "skipped": skipped}
+
+
+def dupes_read_main(path):
+    """Читает файл, который нужно почистить.
+
+    Возвращает dict: name, path, numbers (уникальные, в исходном порядке),
+    total_rows, inner_dupes (сколько повторов внутри самого файла),
+    fingerprint (отпечаток набора номеров — для кеша).
+    """
+    with open(path, "rb") as fh:
+        data = fh.read()
+    res = _main_from_bytes(os.path.basename(path), data)
+    res["path"] = path
+    return res
+
+
+def _main_from_bytes(name, data):
+    rows = _rows_from_bytes(name, data)
+    ph, _st, has_head = _find_columns(rows)
+    seen, numbers, total = set(), [], 0
+    for row in rows[1 if has_head else 0:]:
+        if ph >= len(row):
+            continue
+        num = dupes_norm_phone(row[ph])
+        if not num:
+            continue
+        total += 1
+        if num not in seen:
+            seen.add(num)
+            numbers.append(num)
+    if not numbers:
+        raise ValueError("в файле не найдено ни одного номера")
+    fp = _hashlib.sha1("\n".join(sorted(seen)).encode()).hexdigest()
+    return {"name": os.path.basename(name), "path": "", "numbers": numbers,
+            "total_rows": total, "inner_dupes": total - len(numbers), "fingerprint": fp}
+
+
+def dupes_filter(numbers, status_phones, statuses):
+    """Делит номера на (оставить, удалённые[(номер, статусы)])."""
+    statuses = set(statuses)
+    kept, removed = [], []
+    for num in numbers:
+        sts = status_phones.get(num)
+        hit = sts & statuses if sts else None
+        if hit:
+            removed.append((num, sorted(hit)))
+        else:
+            kept.append(num)
+    return kept, removed
+
+
+def desktop_dir():
+    """Настоящий «Рабочий стол» (в т.ч. перенесённый в OneDrive)."""
+    if os.name == "nt":
+        try:
+            import ctypes
+            from ctypes import wintypes
+            buf = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
+            # CSIDL_DESKTOPDIRECTORY = 0x10
+            if ctypes.windll.shell32.SHGetFolderPathW(None, 0x10, None, 0, buf) == 0 and buf.value:
+                return buf.value
+        except Exception:
+            pass
+    for cand in (os.path.join(os.path.expanduser("~"), "Desktop"),
+                 os.path.join(os.path.expanduser("~"), "Рабочий стол")):
+        if os.path.isdir(cand):
+            return cand
+    return os.path.expanduser("~")
+
+
+def dupes_output_name(src_name, old_count, new_count):
+    """«Ейск 23.03 270.xlsx» → «Ейск 23.03 33.xlsx»: если имя заканчивается
+    количеством номеров — подставляем новое, иначе имя остаётся как было."""
+    stem, _ext = os.path.splitext(src_name)
+    m = re.match(r"^(.*?)([\s_]+)(\d+)$", stem)
+    if m and int(m.group(3)) == old_count:
+        stem = f"{m.group(1)}{m.group(2)}{new_count}"
+    return stem + ".xlsx"
+
+
+def dupes_save_result(numbers, src_name, old_count, out_dir=None, file_name=None):
+    """Сохраняет номера в формате программы: столбец A — номера,
+    B1 — их количество. Папка по умолчанию: Рабочий стол/дубли ДД.ММ.ГГГГ."""
+    import openpyxl
+    if out_dir is None:
+        out_dir = os.path.join(desktop_dir(),
+                               f"дубли {datetime.date.today().strftime('%d.%m.%Y')}")
+    os.makedirs(out_dir, exist_ok=True)
+    if file_name:
+        if not file_name.lower().endswith(".xlsx"):
+            file_name += ".xlsx"
+    else:
+        file_name = dupes_output_name(src_name, old_count, len(numbers))
+    path = os.path.join(out_dir, file_name)
+    stem, ext = os.path.splitext(path)
+    n = 2
+    while os.path.exists(path):
+        path = f"{stem} ({n}){ext}"
+        n += 1
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for i, num in enumerate(numbers, 1):
+        ws.cell(row=i, column=1, value=int(num))
+    if numbers:
+        ws.cell(row=1, column=2, value=len(numbers))
+    ws.column_dimensions["A"].width = 16
+    wb.save(path)
+    return path
+
+
+# ── кеш обработанных файлов ──
+def dupes_cache_load():
+    try:
+        with open(DUPES_CACHE_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            data.setdefault("files", [])
+            data.setdefault("status_paths", [])
+            return data
+    except Exception:
+        pass
+    return {"files": [], "status_paths": []}
+
+
+def _dupes_cache_save(data):
+    try:
+        data["files"] = data.get("files", [])[-DUPES_CACHE_LIMIT:]
+        tmp = DUPES_CACHE_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=1,
+                      default=lambda o: sorted(o) if isinstance(o, (set, frozenset)) else str(o))
+        os.replace(tmp, DUPES_CACHE_FILE)
+    except Exception:
+        pass
+
+
+DUPES_OVERLAP_WARN = 0.8   # с какой доли общих номеров файл считается «уже бывшим»
+
+
+def _nums_pack(numbers):
+    """Номера для кеша одной компактной строкой: по 10 последних цифр подряд."""
+    return "".join(sorted(n[-10:] for n in numbers))
+
+
+def _nums_unpack(packed):
+    if not packed:
+        return set()
+    return {"7" + packed[i:i + 10] for i in range(0, len(packed), 10)}
+
+
+def dupes_cache_find(fingerprint, name, numbers=None):
+    """Ищет файл в кеше. Возвращает (запись, как_совпало, доля) или (None, None, 0).
+    как_совпало:
+      "same"    — ровно те же номера (тот же файл, хоть и переименованный);
+      "overlap" — большая часть номеров уже была в обработанном файле
+                  (например, это исходник уже почищенного файла или наоборот);
+      "name"    — совпало только имя файла."""
+    files = dupes_cache_load()["files"]
+    for e in reversed(files):
+        if e.get("fingerprint") == fingerprint:
+            return e, "same", 1.0
+    if numbers:
+        new = set(numbers)
+        best, best_share = None, 0.0
+        for e in reversed(files):
+            old = _nums_unpack(e.get("nums", ""))
+            if not old:
+                continue
+            common = len(new & old)
+            if not common:
+                continue
+            share = common / min(len(new), len(old))
+            if share > best_share:
+                best, best_share = e, share
+        if best is not None and best_share >= DUPES_OVERLAP_WARN:
+            return best, "overlap", best_share
+    low = name.lower()
+    for e in reversed(files):
+        if str(e.get("name", "")).lower() == low:
+            return e, "name", 0.0
+    return None, None, 0.0
+
+
+def dupes_cache_import(paths):
+    """Заносит в историю уже обработанные раньше файлы (без чистки), чтобы
+    программа предупреждала, если они снова попадут в работу. Понимает
+    отдельные файлы, папки и ZIP-архивы.
+    Возвращает (добавлено, уже_были, [(имя, причина)] не прочитанных)."""
+    data = dupes_cache_load()
+    known = {e.get("fingerprint") for e in data["files"]}
+    added, already, bad = 0, 0, []
+    when = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+    for name, raw in _iter_source_files(paths):
+        if raw is None:
+            bad.append((name, "не удалось открыть архив"))
+            continue
+        try:
+            m = _main_from_bytes(name, raw)
+        except Exception as e:
+            bad.append((name, str(e)))
+            continue
+        if m["fingerprint"] in known:
+            already += 1
+            continue
+        known.add(m["fingerprint"])
+        data["files"].append({
+            "name": os.path.basename(name.split(" › ")[-1]), "fingerprint": m["fingerprint"],
+            "total": len(m["numbers"]), "removed": "", "kept": "", "out": "",
+            "imported": True, "when": when, "nums": _nums_pack(m["numbers"]),
+        })
+        added += 1
+    _dupes_cache_save(data)
+    return added, already, bad
+
+
+def dupes_cache_add(entry):
+    data = dupes_cache_load()
+    entry = dict(entry)
+    entry.setdefault("when", datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
+    data["files"].append(entry)
+    _dupes_cache_save(data)
+
+
+def dupes_cache_set_status_paths(paths):
+    data = dupes_cache_load()
+    data["status_paths"] = list(paths)
+    _dupes_cache_save(data)
+
+
+def dupes_cache_set_status_choice(keep, remove):
+    """Запоминает, какие статусы пользователь оставлял, а какие удалял."""
+    data = dupes_cache_load()
+    data["status_choice"] = {"keep": list(keep), "remove": list(remove)}
+    _dupes_cache_save(data)
+
+
+def dupes_cache_clear():
+    data = dupes_cache_load()
+    data["files"] = []
+    _dupes_cache_save(data)

@@ -43,7 +43,7 @@ BACKUP_DIR = os.path.join(APP_DIR, "_backup")
 DEFAULT_CONFIG = {"repo": "", "branch": "main", "token": ""}
 
 # Файлы, которые нельзя перезаписывать никогда — настройки и данные пользователя.
-PROTECTED = {"update_config.json", "theme.json", "orgs_phones_cache.json"}
+PROTECTED = {"update_config.json", "theme.json", "orgs_phones_cache.json", "dupes_cache.json"}
 
 
 class UpdateError(Exception):
