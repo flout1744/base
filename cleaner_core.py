@@ -48,6 +48,7 @@ APP_CHANGES = (
     "выгрузки со статусами можно грузить файлами, папкой или ZIP-архивом; перед чисткой окно с галочками: какие статусы удалить, какие оставить — сразу видно, сколько номеров останется; название готового файла вписываешь сам",
     "готовый файл сразу ложится на Рабочий стол в папку «дубли ДД.ММ.ГГГГ» с тем же названием",
     "программа помнит обработанные файлы и предупреждает, если файл (или почти такой же) уже был в работе; старые файлы можно добавить в историю вручную",
+    "после каждой чистки вкладка сама сбрасывается под следующий файл; история обработанных файлов не удаляется",
 )
 
 # ─────────────────────────────  ОФОРМЛЕНИЕ: VORTEX  ─────────────────────────────
@@ -2232,7 +2233,6 @@ import zipfile as _zipfile
 import hashlib as _hashlib
 
 DUPES_CACHE_FILE = os.path.join(_app_dir(), "dupes_cache.json")
-DUPES_CACHE_LIMIT = 1000          # сколько последних обработанных файлов помнить
 DUPES_TABLE_EXT = (".csv", ".xlsx", ".xlsm", ".xls")
 
 _PHONE_HEADERS = {"phone_number", "phone", "телефон", "номер", "номер телефона", "tel", "number"}
@@ -2513,16 +2513,22 @@ def dupes_cache_load():
             data = json.load(f)
         if isinstance(data, dict):
             data.setdefault("files", [])
-            data.setdefault("status_paths", [])
             return data
-    except Exception:
+    except FileNotFoundError:
         pass
-    return {"files": [], "status_paths": []}
+    except Exception:
+        # файл истории повреждён — не затираем его, а откладываем копию,
+        # чтобы историю можно было восстановить
+        try:
+            stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            shutil.copy2(DUPES_CACHE_FILE, DUPES_CACHE_FILE + f".broken_{stamp}")
+        except Exception:
+            pass
+    return {"files": []}
 
 
 def _dupes_cache_save(data):
     try:
-        data["files"] = data.get("files", [])[-DUPES_CACHE_LIMIT:]
         tmp = DUPES_CACHE_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=1,
@@ -2619,20 +2625,8 @@ def dupes_cache_add(entry):
     _dupes_cache_save(data)
 
 
-def dupes_cache_set_status_paths(paths):
-    data = dupes_cache_load()
-    data["status_paths"] = list(paths)
-    _dupes_cache_save(data)
-
-
 def dupes_cache_set_status_choice(keep, remove):
     """Запоминает, какие статусы пользователь оставлял, а какие удалял."""
     data = dupes_cache_load()
     data["status_choice"] = {"keep": list(keep), "remove": list(remove)}
-    _dupes_cache_save(data)
-
-
-def dupes_cache_clear():
-    data = dupes_cache_load()
-    data["files"] = []
     _dupes_cache_save(data)

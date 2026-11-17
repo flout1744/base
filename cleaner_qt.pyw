@@ -6595,15 +6595,13 @@ class App(QMainWindow):
         self.dupes_src_dir_btn = IconBtn(_icon(ICONS["folder"], FG, "📁"),
                                          "Добавить папку с выгрузками")
         self.dupes_src_dir_btn.clicked.connect(self._dupes_pick_source_dir)
-        self.dupes_src_clear_btn = IconBtn(_icon(ICONS["eraser"], DUPE_RED, "✕"),
-                                           "Убрать все файлы со статусами", variant="danger")
-        self.dupes_src_clear_btn.clicked.connect(lambda: self._dupes_set_sources([]))
-        self.dupes_src_label = QLabel("2. Файлы со статусами не выбраны")
+        self.dupes_src_label = QLabel("2. Сначала загрузи файл для чистки")
         self.dupes_src_label.setStyleSheet(hint_style)
+        self.dupes_src_btn.setEnabled(False)
+        self.dupes_src_dir_btn.setEnabled(False)
         self.dupes_src_label.setWordWrap(True)
         row2.addWidget(self.dupes_src_btn)
         row2.addWidget(self.dupes_src_dir_btn)
-        row2.addWidget(self.dupes_src_clear_btn)
         row2.addWidget(self.dupes_src_label, 1)
         lay.addLayout(row2)
 
@@ -6630,8 +6628,8 @@ class App(QMainWindow):
         row3.addStretch()
         lay.addLayout(row3)
 
-        self.dupes_status = QLabel("Можно просто перетащить файлы в это окно: архив или папка "
-                                   "со статусами, файл для чистки — отдельно.")
+        self.dupes_status = QLabel("Порядок: 1 — файл для чистки, 2 — выгрузки со статусами "
+                                   "(файлы, папка или ZIP). Файлы можно просто перетащить в окно.")
         self.dupes_status.setWordWrap(True)
         self.dupes_status.setStyleSheet(hint_style)
         lay.addWidget(self.dupes_status)
@@ -6662,12 +6660,6 @@ class App(QMainWindow):
         imp_dir.setIconSize(QSize(14, 14))
         imp_dir.clicked.connect(self._dupes_import_history_dir)
         hist_row.addWidget(imp_dir)
-        clear_hist = QPushButton("  Очистить историю")
-        clear_hist.setIcon(_icon(ICONS["trash"], DUPE_RED, ""))
-        clear_hist.setIconSize(QSize(14, 14))
-        clear_hist.setObjectName("danger")
-        clear_hist.clicked.connect(self._dupes_clear_history)
-        hist_row.addWidget(clear_hist)
         lay.addLayout(hist_row)
 
         self.dupes_hist = QTableWidget(0, 5)
@@ -6688,10 +6680,6 @@ class App(QMainWindow):
         self._dupes = {"main": None, "sources": [], "status": None, "loading": False,
                        "last_out": None}
         self._dupes_fill_history()
-        # прошлые источники статусов подставляем сами, если они ещё на месте
-        prev = [p for p in C.dupes_cache_load().get("status_paths", []) if os.path.exists(p)]
-        if prev:
-            QTimer.singleShot(0, lambda: self._dupes_set_sources(prev, remember=False))
         self._maybe_flip_layout(lay)
         return page
 
@@ -6765,7 +6753,11 @@ class App(QMainWindow):
             if QMessageBox.question(self, "Файл уже обрабатывался", text) != QMessageBox.Yes:
                 return
             self.toast("Повторный файл", f"«{main['name']}» уже чистили {entry.get('when', '')}", "info")
+        self._dupes_reset()
         self._dupes["main"] = main
+        self.dupes_src_btn.setEnabled(True)
+        self.dupes_src_dir_btn.setEnabled(True)
+        self.dupes_src_label.setText("2. Теперь добавь выгрузки со статусами (файлы, папку или ZIP)")
         extra = f", повторов внутри файла: {main['inner_dupes']}" if main["inner_dupes"] else ""
         mark = "  ⚠ уже обрабатывался" if entry else ""
         self.dupes_main_label.setText(
@@ -6775,13 +6767,32 @@ class App(QMainWindow):
             f"color:{DUPE_RED if entry else FG}; font-size:9.5pt;")
         self._dupes_update_ready()
 
+    def _dupes_reset(self, keep_report=False):
+        """Всё в исходное состояние — для следующего файла. История не трогается.
+        keep_report — оставить на экране отчёт о только что сделанной чистке."""
+        d = self._dupes
+        d.update({"main": None, "sources": [], "status": None, "loading": False})
+        d["token"] = None
+        self.dupes_main_label.setText("1. Файл для чистки не выбран")
+        self.dupes_main_label.setToolTip("")
+        self.dupes_main_label.setStyleSheet(f"color:{FG2}; font-size:9.5pt;")
+        self.dupes_src_label.setText("2. Сначала загрузи файл для чистки")
+        self.dupes_src_label.setToolTip("")
+        self.dupes_src_btn.setEnabled(False)
+        self.dupes_src_dir_btn.setEnabled(False)
+        if not keep_report:
+            self.dupes_log.clear()
+            self.dupes_status.setText("")
+        self._dupes_update_ready()
+
     # ---- выгрузки со статусами ----
-    def _dupes_set_sources(self, paths, remember=True):
+    def _dupes_set_sources(self, paths):
+        if self._dupes["main"] is None:
+            self.toast("Сначала файл для чистки", "Загрузи файл, из которого убирать дубли", "info")
+            return
         uniq = list(dict.fromkeys(os.path.normpath(p) for p in paths))
         self._dupes["sources"] = uniq
         self._dupes["status"] = None
-        if remember:
-            C.dupes_cache_set_status_paths(uniq)
         if not uniq:
             self.dupes_src_label.setText("2. Файлы со статусами не выбраны")
             self.dupes_src_label.setToolTip("")
@@ -6882,11 +6893,8 @@ class App(QMainWindow):
                                   f"осталось {_dnum(len(kept))} → {os.path.basename(out)}")
         self.toast("Дубли убраны", f"{main['name']}: осталось {len(kept)} из {total}", "ok")
 
-        # файл обработан — сбрасываем его, выгрузки со статусами оставляем для следующего
-        d["main"] = None
-        self.dupes_main_label.setText("1. Файл для чистки не выбран — можно брать следующий")
-        self.dupes_main_label.setStyleSheet(f"color:{FG2}; font-size:9.5pt;")
-        self._dupes_update_ready()
+        # файл обработан — всё сбрасываем, вкладка готова к следующему файлу
+        self._dupes_reset(keep_report=True)
 
     def _dupes_ask_statuses(self, main, st):
         """Окно перед чисткой: галочка у статуса = номера с ним удалить,
@@ -7039,7 +7047,7 @@ class App(QMainWindow):
 
     # ---- история ----
     def _dupes_fill_history(self):
-        files = list(reversed(C.dupes_cache_load()["files"]))[:200]
+        files = list(reversed(C.dupes_cache_load()["files"]))
         t = self.dupes_hist
         t.setRowCount(len(files))
         for i, e in enumerate(files):
@@ -7092,15 +7100,6 @@ class App(QMainWindow):
             lines += [f"   {n} — {why}" for n, why in bad[:10]]
         self.dupes_log.appendPlainText("\n".join(["── история ──"] + lines + [""]))
         self.toast("История пополнена", f"Добавлено файлов: {added}", "ok" if added else "info")
-
-    def _dupes_clear_history(self):
-        if QMessageBox.question(
-                self, "Дубли",
-                "Очистить историю обработанных файлов?\n"
-                "После этого программа перестанет предупреждать о повторной чистке.") != QMessageBox.Yes:
-            return
-        C.dupes_cache_clear()
-        self._dupes_fill_history()
 
     # ═══════════════════════════  ВКЛАДКА «ВКЛАДЫ»  ═══════════════════════════
     # Фиксированный формат столбцов (без ручного выбора):
