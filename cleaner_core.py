@@ -39,7 +39,7 @@ THEME_FILE = os.path.join(_app_dir(), "theme.json")
 # Мелкая правка/починка → +0.1, крупная переделка → следующее целое число.
 # APP_BUILD — время и дата сборки, показывается в окне «о программе».
 APP_VERSION = "3.4"
-APP_BUILD = "10:45 17.11.2026"
+APP_BUILD = "11:40 17.11.2026"
 APP_VERSION_FULL = f"версия {APP_VERSION} от {APP_BUILD}"
 
 # Короткий список того, что изменилось в этой версии (окно «о программе»).
@@ -49,6 +49,8 @@ APP_CHANGES = (
     "готовый файл сразу ложится на Рабочий стол в папку «дубли ДД.ММ.ГГГГ» с тем же названием",
     "программа помнит обработанные файлы и предупреждает, если файл (или почти такой же) уже был в работе; старые файлы можно добавить в историю вручную",
     "после каждой чистки вкладка сама сбрасывается под следующий файл; история обработанных файлов не удаляется",
+    "две новые темы оформления — «Пульт» (тёмная) и «Бланк» (светлая): свой дизайн, кнопки-клавиши, лампа у активного раздела, поля-строки бланка, свои анимации; выбираются в шапке окна",
+    "прежние темы остались без изменений",
 )
 
 # ─────────────────────────────  ОФОРМЛЕНИЕ: VORTEX  ─────────────────────────────
@@ -238,8 +240,91 @@ THEMES = {
         "HOVER_ROW": "#1d272e", "ROW_ODD": "#121a1e",
     },
 }
+
+# ─────────────────────  СЕМЕЙСТВО «ПУЛЬТ / БЛАНК»  ─────────────────────
+# Отдельный дизайн (design = "console"), а не перекраска Vortex: свой QSS,
+# свои эффекты, свой шрифт и свои пропорции. Темы Vortex этот блок не задевает —
+# всё новое включается только когда активна одна из этих двух тем.
+#   «Пульт» — диспетчерский пульт: графит с оливковым отливом, сигнальная
+#             жёлтая лампа, кнопки-клавиши, никаких градиентов и свечений.
+#   «Бланк» — служебный бланк: белая бумага, тёмный фиолетово-чернильный
+#             корешок меню, акцент — цвет чернил штампа.
+THEMES["console_dark"] = {
+    "label": "Пульт",
+    "design": "console",
+    "swatch": "#f0c24b",
+    "icon": "mdi6.toggle-switch-outline|mdi.toggle-switch-outline|fa5s.toggle-on",
+
+    "BG":      "#1c1e1b",   # холст окна
+    "BG2":     "#141613",   # заголовок окна, статус-строка
+    "BG3":     "#222520",   # карточка контента
+    "NAV_BG":  "#171916",   # боковое меню
+
+    "SURFACE": "#2a2d27",   # поля ввода, таблицы
+    "BORDER":  "#3a3e36",
+    "DIVIDER": "#2f332c",
+
+    "ACCENT":      "#f0c24b",   # сигнальная лампа
+    "ACCENT_HV":   "#ffd76e",
+    "ACCENT_DEEP": "#9c7a1e",   # «тень» клавиши под акцентной кнопкой
+    "ACCENT_SOFT": "#ffe7a6",
+
+    "DUPE_RED": "#ec6a4f", "DUPE_RED_HV": "#ff8c73",
+    "DANGER_BG": "#33201b", "DANGER_FG": "#ffbcab",
+    "GREEN": "#8bc77a", "GREEN_HV": "#a9db9a",
+    "BLUE": "#8fb3d9",
+
+    "GRAY_BTN": "#2c2f29", "GRAY_HV": "#353931",
+
+    "FG": "#eceae1", "FG2": "#a6a89c", "FG3": "#74776c",
+    "LOG_FG": "#c9c8bc",
+
+    "HOVER_ROW": "#2f322b", "ROW_ODD": "#252822",
+
+    # ── только для дизайна «console» ──
+    "NAV_FG": "#a6a89c", "NAV_FG_HI": "#eceae1",
+    "NAV_ACTIVE_BG": "#f0c24b", "NAV_ACTIVE_FG": "#1c1a10",
+    "KEY_EDGE": "#0e0f0d",      # нижняя кромка обычных клавиш
+}
+THEMES["console_light"] = {
+    "label": "Бланк",
+    "design": "console",
+    "swatch": "#5b3fc4",
+    "icon": "mdi6.file-document-outline|mdi.file-document-outline|fa5s.file-alt",
+
+    "BG":      "#eceef2",   # стол, на котором лежит бланк
+    "BG2":     "#e1e4ea",
+    "BG3":     "#ffffff",   # сам бланк
+    "NAV_BG":  "#25213f",   # чернильный корешок меню
+
+    "SURFACE": "#ffffff",
+    "BORDER":  "#c8ccd6",
+    "DIVIDER": "#e3e6ec",
+
+    "ACCENT":      "#5b3fc4",   # фиолетовые чернила штампа
+    "ACCENT_HV":   "#7357e0",
+    "ACCENT_DEEP": "#3b2790",
+    "ACCENT_SOFT": "#3f2a99",   # акцентный текст на белом
+
+    "DUPE_RED": "#cf3a24", "DUPE_RED_HV": "#a92b18",
+    "DANGER_BG": "#fde7e3", "DANGER_FG": "#8f2414",
+    "GREEN": "#1f8a4c", "GREEN_HV": "#18713e",
+    "BLUE": "#2f63c4",
+
+    "GRAY_BTN": "#ffffff", "GRAY_HV": "#f3f4f7",
+
+    "FG": "#1b1d24", "FG2": "#555b69", "FG3": "#7a8090",
+    "LOG_FG": "#3d4250",
+
+    "HOVER_ROW": "#f1eefc", "ROW_ODD": "#f7f8fa",
+
+    "NAV_FG": "#b7b2d6", "NAV_FG_HI": "#ffffff",
+    "NAV_ACTIVE_BG": "#ffffff", "NAV_ACTIVE_FG": "#25213f",
+    "KEY_EDGE": "#b9bdc8",
+}
+
 THEME_ORDER = ["vortex_dark", "vortex_light", "vortex_graphite",
-               "vortex_cherry", "vortex_ocean"]
+               "vortex_cherry", "vortex_ocean", "console_dark", "console_light"]
 
 # Единый набор иконок. Значение — список кандидатов через «|»: берётся первый,
 # который есть в установленной версии qtawesome. Так набор mdi6 (скруглённые,
@@ -316,10 +401,24 @@ STYLE_SETS = {
 }
 
 
+# Пропорции семейства «Пульт / Бланк»: меньше скругления, системный
+# Bahnschrift (есть в Windows 10/11, в т.ч. кириллица), чуть уже меню.
+_CONSOLE_STYLE = {
+    "design": "console",
+    "font": "Bahnschrift", "font_fallback": "Segoe UI", "font_mono": "Cascadia Mono",
+    "radius_sm": 4, "radius_md": 6, "radius_lg": 10,
+    "icon_btn_radius": 6, "border_w": 1, "btn_weight": 600,
+    "nav_style": "console", "gradient_buttons": False,
+    "sidebar_w": 240,
+}
+STYLE_SETS["console_dark"] = dict(_CONSOLE_STYLE)
+STYLE_SETS["console_light"] = dict(_CONSOLE_STYLE)
+
+
 def get_style_set(theme_name=None):
     """Стилевые токены активной темы."""
     base = dict(STYLE_SETS["vortex_dark"])
-    base.update(STYLE_SETS.get(theme_name or "vortex_dark", {}))
+    base.update(STYLE_SETS.get(theme_name or _active_theme_name, {}))
     return base
 
 
